@@ -1,12 +1,97 @@
 
+<!doctype html>
 <html>
-  <head>
-    <title>Testing Website</title>
-  </head>
-  <body>
-    <h1>What is up with you</h1>
-    <?php
-    echo 'hello';
-    ?>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <title>Free KAHEL Faucet</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding-top: 80px;
+    }
+    h1 { color: #ffa500; }
+    button {
+      background: #ff6600;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      padding: 15px 40px;
+      font-size: 1.2em;
+      cursor: pointer;
+      margin: 10px;
+      transition: 0.2s;
+    }
+    button:hover { background: #ff8800; }
+    #status {
+      margin-top: 20px;
+      font-size: 1.1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 Free KAHEL Faucet 🔥</h1>
+  <p id="account">Not logged in</p>
+  <button id="loginBtn">Login with WAX</button>
+  <button id="claimBtn" style="display:none;">Get 4 KAHEL</button>
+  <div id="status"></div>
+  <script src="../waxjs.js"></script>
+  <script>
+    const wax = new waxjs.WaxJS({
+  rpcEndpoint: 'https://wax.greymass.com',
+  tryAutoLogin: true
+});
+
+    const backendURL = 'http://localhost:3000/redeem'; // change to your deployed URL later
+
+    const loginBtn = document.getElementById('loginBtn');
+    const claimBtn = document.getElementById('claimBtn');
+    const accountEl = document.getElementById('account');
+    const statusEl = document.getElementById('status');
+
+    async function login() {
+      try {
+        const userAccount = await wax.login();
+        accountEl.textContent = "Logged in as " + userAccount;
+        loginBtn.style.display = "none";
+        claimBtn.style.display = "inline-block";
+        statusEl.textContent = "";
+      } catch (e) {
+        statusEl.textContent = "Login failed: " + e.message;
+      }
+    }
+
+    async function claim() {
+      if (!wax.userAccount) return statusEl.textContent = "Please login first.";
+
+      statusEl.textContent = "Requesting 4 KAHEL...";
+
+      try {
+        const resp = await fetch(backendURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ account: wax.userAccount, amount: 4 })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+          statusEl.textContent = "❌ Error: " + (data.error || data.detail || "Unknown error");
+          return;
+        }
+
+        statusEl.textContent = `✅ Sent 4 KAHEL! TX: ${data.txid}`;
+      } catch (err) {
+        statusEl.textContent = "Network error: " + err.message;
+      }
+    }
+
+    loginBtn.addEventListener('click', login);
+    claimBtn.addEventListener('click', claim);
+  </script>
+  
+</body>
 </html>
+
