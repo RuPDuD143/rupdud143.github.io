@@ -35,7 +35,7 @@
   <h1>🔥 Free KAHEL Faucet 🔥</h1>
   <p id="account">Not logged in</p>
   <button id="loginBtn">Login with WAX</button>
-  <button id="claimBtn" style="display:none;">Get 4 KAHEL</button>
+  <button id="claimBtn" style="display:none;">Get 1 KAHEL</button>
   <div id="status"></div>
   <script src="waxjs.js"></script>
   <script>
@@ -66,13 +66,13 @@
     async function claim() {
       if (!wax.userAccount) return statusEl.textContent = "Please login first.";
 
-      statusEl.textContent = "Requesting 4 KAHEL...";
+      statusEl.textContent = "Requesting 1 KAHEL...";
 
       try {
         const resp = await fetch(backendURL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ account: wax.userAccount, amount: 4 })
+          body: JSON.stringify({ account: wax.userAccount, amount: 1 })
         });
         
         const data = await resp.json();
@@ -83,7 +83,7 @@
           return;
         }
         
-        statusEl.textContent = `✅ Sent 4 KAHEL! TX: ${data.txid}`;
+        statusEl.textContent = `✅ Sent 1 KAHEL! TX: ${data.txid}`;
 
       } catch (err) {
         statusEl.textContent = "Network error: " + err.message;
