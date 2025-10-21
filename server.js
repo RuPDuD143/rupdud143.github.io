@@ -74,13 +74,14 @@ function formatQty(intAmount) {
 }
 app.get("/auto-login", async (req, res) => {
   try {
-    const response = fetch("https://rupdud143backend.onrender.com/auto-login");
+    const response = await fetch("https://idm-api.mycloudwallet.com/v1/accounts/auto-accept/login");
     const data = await response.json();
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
 // Endpoint: redeem (body: { account: 'alice', amount: 10 })
 app.post('/redeem', async (req, res) => {
   try {
@@ -155,5 +156,6 @@ app.get('/claims/recent', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Faucet server listening on ${PORT}`);
 });
+
 
 
