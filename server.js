@@ -145,9 +145,15 @@ app.post('/redeem', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Redeem error full details:\n', JSON.stringify(err, null, 2));
-    return res.status(500).json({ error: 'internal_error', detail: err.message });
-}
+    console.error('Redeem error full object:', err);       // <-- print everything
+    console.error('Redeem error JSON:', err.json || {});  // <-- blockchain details
+
+    return res.status(500).json({
+      error: 'internal_error',
+      message: err.message,
+      details: err.json || {}
+    });
+  }
 
 });
 
@@ -160,6 +166,7 @@ app.get('/claims/recent', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Faucet server listening on ${PORT}`);
 });
+
 
 
 
