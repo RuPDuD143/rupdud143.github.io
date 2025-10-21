@@ -34,7 +34,10 @@ const api = new Api({
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'https://rupdud143.github.io',
+  methods: ['GET','POST']
+}));
 
 // per-IP rate limiter
 const ipLimiter = rateLimit({
@@ -166,6 +169,7 @@ app.get('/claims/recent', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Faucet server listening on ${PORT}`);
 });
+
 
 
 
