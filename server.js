@@ -145,9 +145,10 @@ app.post('/redeem', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Redeem error', err);
+    console.error('Redeem error full details:\n', JSON.stringify(err, null, 2));
     return res.status(500).json({ error: 'internal_error', detail: err.message });
-  }
+}
+
 });
 
 // Admin: view last claims (very minimal - protect this in prod!)
@@ -159,6 +160,7 @@ app.get('/claims/recent', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Faucet server listening on ${PORT}`);
 });
+
 
 
 
