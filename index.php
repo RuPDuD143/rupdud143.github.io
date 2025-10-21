@@ -44,7 +44,7 @@
   tryAutoLogin: true
 });
 
-    const backendURL = 'http://localhost:3000/redeem'; // change to your deployed URL later
+    const backendURL = 'https://rupdud143backend.onrender.com/redeem';
 
     const loginBtn = document.getElementById('loginBtn');
     const claimBtn = document.getElementById('claimBtn');
