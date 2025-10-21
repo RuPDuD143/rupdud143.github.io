@@ -74,15 +74,17 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ account: wax.userAccount, amount: 4 })
         });
-
+        
         const data = await resp.json();
-
+        
         if (!resp.ok || !data.success) {
-          statusEl.textContent = "❌ Error: " + (data.error || data.detail || "Unknown error");
+          console.error("Full backend error:", data);   // <--- print full JSON in console
+          statusEl.textContent = "❌ Error: " + (data.message || JSON.stringify(data.details) || "Unknown error");
           return;
         }
-
+        
         statusEl.textContent = `✅ Sent 4 KAHEL! TX: ${data.txid}`;
+
       } catch (err) {
         statusEl.textContent = "Network error: " + err.message;
       }
