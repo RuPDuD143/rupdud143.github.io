@@ -56,6 +56,9 @@ db.prepare(`
     txid TEXT
   )
 `).run();
+app.get("/", (req, res) => {
+  res.send("Backend is online ✅");
+});
 
 const insertClaim = db.prepare('INSERT INTO claims (account,amount,timestamp,txid) VALUES (@account,@amount,@timestamp,@txid)');
 const getDailyTotal = db.prepare('SELECT COALESCE(SUM(amount),0) as sum FROM claims WHERE account = ? AND timestamp >= ?');
@@ -156,6 +159,7 @@ app.get('/claims/recent', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Faucet server listening on ${PORT}`);
 });
+
 
 
 
