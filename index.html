@@ -1,155 +1,328 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>KAHEL Miner</title>
+  <meta charset="utf-8" />
+  <title>KAHEL Miner Game — Faucet (Pool Burns)</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #0b0b10; color: #eee; display:flex; justify-content:center; align-items:flex-start; padding:40px; }
-    .card { background: #111; padding:20px; border-radius:12px; width:420px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
-    h1 { color:#ffb347; margin:0 0 10px 0; }
-    .row { display:flex; justify-content:space-between; margin:8px 0; }
-    button { background:#ff6600; border:none; border-radius:10px; padding:8px 12px; cursor:pointer; color:white; font-weight:600; }
-    button.secondary { background:#444; }
-    #status { margin-top:12px; font-size:0.95em; color:#ddd; }
-    .nums { font-weight:700; color:#fff; }
+    body { font-family: Arial, sans-serif; background: #0b0b0b; color: #fff; padding: 40px; text-align:center; }
+    h1 { color: #ffa500; }
+    .card { background: #111; padding: 20px; border-radius: 12px; display:inline-block; min-width:360px; }
+    button { background: #ff6600; border: none; border-radius: 10px; color: white; padding: 10px 18px; font-size: 1rem; cursor: pointer; margin:6px; }
+    input { padding:6px; border-radius:6px; border:1px solid #333; margin-left:6px; }
+    .stat { font-size:1.05rem; margin:6px 0; }
+    .note { font-size:0.85rem; color:#bbb; margin-top:8px; }
   </style>
 </head>
 <body>
+  <h1>🔥 KAHEL Miner Game (Pool Burns) 🔥</h1>
   <div class="card">
-    <h1>🔥 KAHEL Miner (online-only)</h1>
-
     <p id="account">Not logged in</p>
-
-    <div class="row"><div>Coins/sec</div><div class="nums" id="rate">—</div></div>
-    <div class="row"><div>Coins</div><div class="nums" id="coins">—</div></div>
-    <div class="row"><div>Gems</div><div class="nums" id="gems">—</div></div>
-    <div class="row"><div>Level</div><div class="nums" id="level">—</div></div>
-    <div class="row"><div>In-game KAHEL</div><div class="nums" id="kahel">—</div></div>
-
-    <div style="margin-top:12px;">
+    <div>
       <button id="loginBtn">Login (MyCloudWallet / WAX)</button>
-      <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
+      <button id="logoutBtn" style="display:none">Logout</button>
     </div>
 
-    <hr style="margin:14px 0;border-color:#222">
+    <div id="controls" style="display:none; margin-top:12px;">
+      <div class="stat">Coins: <span id="coins">0</span></div>
+      <div class="stat">Gems: <span id="gems">0</span></div>
+      <div class="stat">Rate: <span id="rate">1</span> coin/sec (level <span id="level">0</span>)</div>
+      <div class="stat">In-game KAHEL: <span id="kahel_in_game">0.00</span></div>
+      <div class="stat">Today's burned (you): <span id="today_burn">0</span></div>
+      <div class="stat">Claimed today: <span id="claimed_today">no</span></div>
 
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button id="upgradeBtn">Upgrade Miner (cost shown)</button>
-      <button id="burnBtn">Burn Coins → Kahel</button>
-      <button id="convertBtn">Convert Kahel → Gems (1:1)</button>
-      <button id="cashoutBtn">Cashout Kahel → My Kahel (on-chain)</button>
+      <div style="margin-top:12px;">
+        <button id="upgradeBtn">Upgrade Miner (cost: <span id="upgradeCost">5</span> gems)</button>
+      </div>
+
+      <div style="margin-top:8px;">
+        <label>Burn Coins (min 1,000,000):</label>
+        <input id="burnAmt" placeholder="1000000" style="width:120px" />
+        <button id="burnBtn">Burn</button>
+      </div>
+
+      <div style="margin-top:8px;">
+        <button id="claimBtn">Claim today's share of 1.00 KAHEL pool</button>
+      </div>
+
+      <div style="margin-top:8px;">
+        <label>Convert KAHEL to Gems (1:1):</label>
+        <input id="convertAmt" placeholder="1.00" style="width:80px" />
+        <button id="convertBtn">Convert</button>
+      </div>
+
+      <div style="margin-top:8px;">
+        <label>Cashout to on-chain KAHEL:</label>
+        <input id="cashoutAmt" placeholder="1.00" style="width:80px" />
+        <button id="cashoutBtn">Cashout</button>
+      </div>
+
+      <div id="status" style="margin-top:12px; color:#cfcfcf;"></div>
+      <div class="note">Notes: Burns are pooled per UTC day. Claim computes your share of a single 1.00 KAHEL pool. You can burn multiple times; only burns before your claim are counted.</div>
     </div>
-
-    <div id="status"></div>
   </div>
 
   <script src="waxjs.js"></script>
   <script>
-    // config
-    const backend = 'https://rupdud143backend.onrender.com'; // your backend
-    const PING_INTERVAL_MS = 1000; // 1s (server awards coins per second)
-    const MIN_BURN = 1000000;
+    const BACKEND = 'https://rupdud143backend.onrender.com'; // change as needed
+    const HEARTBEAT_INTERVAL_MS = 5000;
 
+    const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+
+    // DOM
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const accountEl = document.getElementById('account');
-    const statusEl = document.getElementById('status');
+    const controls = document.getElementById('controls');
     const coinsEl = document.getElementById('coins');
     const gemsEl = document.getElementById('gems');
     const rateEl = document.getElementById('rate');
     const levelEl = document.getElementById('level');
-    const kahelEl = document.getElementById('kahel');
-
+    const kahelEl = document.getElementById('kahel_in_game');
+    const todayBurnEl = document.getElementById('today_burn');
+    const claimedEl = document.getElementById('claimed_today');
     const upgradeBtn = document.getElementById('upgradeBtn');
+    const upgradeCostEl = document.getElementById('upgradeCost');
     const burnBtn = document.getElementById('burnBtn');
+    const burnAmt = document.getElementById('burnAmt');
+    const claimBtn = document.getElementById('claimBtn');
     const convertBtn = document.getElementById('convertBtn');
+    const convertAmt = document.getElementById('convertAmt');
     const cashoutBtn = document.getElementById('cashoutBtn');
+    const cashoutAmt = document.getElementById('cashoutAmt');
+    const statusEl = document.getElementById('status');
 
-    // your local waxjs wrapper usage (same as before)
-    const wax = new waxjs.WaxJS({
-      rpcEndpoint: 'https://wax.greymass.com',
-      tryAutoLogin: true
-    });
+    let heartbeatTimer = null;
+    let myAccount = null;
 
-    let account = null;
-    let pingTimer = null;
-    let latestUserState = null;
-
-    async function setStatus(text) { statusEl.textContent = text; }
-
-    function reflectState(user) {
-      latestUserState = user;
-      accountEl.textContent = 'Account: ' + user.account;
-      coinsEl.textContent = user.coins.toLocaleString();
-      gemsEl.textContent = user.gems.toLocaleString();
-      rateEl.textContent = user.rate + ' /sec';
-      levelEl.textContent = user.level;
-      kahelEl.textContent = user.kahel_offchain.toLocaleString();
-      // update upgrade button label
-      const cost = 5 + (user.level || 0);
-      upgradeBtn.textContent = `Upgrade Miner (cost ${cost} Gems)`;
+    function setStatus(msg, err=false) {
+      statusEl.textContent = msg;
+      statusEl.style.color = err ? '#ff8080' : '#cfcfcf';
     }
 
-    async function fetchState() {
-      if (!account) return;
+    async function fetchPlayer() {
       try {
-        const r = await fetch(`${backend}/state/${account}`);
-        const j = await r.json();
-        if (j.success) reflectState(j.user);
+        const resp = await fetch(`${BACKEND}/player/${myAccount}`);
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Error fetching player: ' + (data.error || JSON.stringify(data)), true);
+          return;
+        }
+        coinsEl.textContent = data.coins;
+        gemsEl.textContent = data.gems;
+        rateEl.textContent = data.rate;
+        levelEl.textContent = data.level;
+        kahelEl.textContent = data.kahel_in_game;
+        todayBurnEl.textContent = data.today_burn_total;
+        claimedEl.textContent = data.has_claimed_today ? 'yes' : 'no';
+        upgradeCostEl.textContent = 5 + data.level;
       } catch (e) {
-        console.error(e);
+        setStatus('Network error: ' + e.message, true);
       }
     }
 
-    async function startPing() {
-      if (pingTimer) clearInterval(pingTimer);
-      pingTimer = setInterval(async () => {
-        try {
-          const r = await fetch(`${backend}/ping`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ account })
-          });
-          const j = await r.json();
-          if (j.success) reflectState(j.user);
-        } catch (e) {
-          console.error('ping error', e);
+    async function sendHeartbeat() {
+      try {
+        const resp = await fetch(`${BACKEND}/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Heartbeat error: ' + (data.error || JSON.stringify(data)), true);
+          return;
         }
-      }, PING_INTERVAL_MS);
+        coinsEl.textContent = data.coins;
+        gemsEl.textContent = data.gems;
+        rateEl.textContent = data.rate;
+        levelEl.textContent = data.level;
+        kahelEl.textContent = data.kahel_in_game;
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
     }
 
-    async function stopPing() {
-      if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    async function startHeartbeat() {
+      if (!myAccount) return;
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      await sendHeartbeat();
+      heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+    }
+    function stopHeartbeat() {
+      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
     }
 
-    // login flow (using wax.login)
-    async function login() {
+    loginBtn.addEventListener('click', async () => {
       try {
         const userAccount = await wax.login();
-        account = userAccount;
-        accountEl.textContent = 'Account: ' + account;
+        myAccount = userAccount;
+        accountEl.textContent = 'Logged in as ' + myAccount;
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
-        await fetch(`${backend}/login`, {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ account })
-        });
-        await fetchState();
-        startPing();
-        setStatus('Logged in and mining...');
+        controls.style.display = 'block';
+        setStatus('Logged in. Starting heartbeat...');
+        await fetch(`${BACKEND}/player/${myAccount}`); // ensure user exists
+        await startHeartbeat();
+        await fetchPlayer();
       } catch (e) {
-        setStatus('Login failed: ' + (e.message || e));
+        setStatus('Login failed: ' + (e.message || e), true);
+      }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      if (wax && wax.logout) try { wax.logout(); } catch(e){}
+      setStatus('Logged out.');
+      accountEl.textContent = 'Not logged in';
+      loginBtn.style.display = 'inline-block';
+      logoutBtn.style.display = 'none';
+      controls.style.display = 'none';
+      myAccount = null;
+      stopHeartbeat();
+    });
+
+    upgradeBtn.addEventListener('click', async () => {
+      setStatus('Upgrading...');
+      try {
+        const resp = await fetch(`${BACKEND}/upgrade`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Upgrade failed: ' + (data.error || JSON.stringify(data)), true);
+          return;
+        }
+        setStatus(`Upgraded to level ${data.new_level}. Rate: ${data.new_rate}`);
+        await fetchPlayer();
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
+    });
+
+    burnBtn.addEventListener('click', async () => {
+      const amt = parseInt(burnAmt.value || '0', 10);
+      if (!amt || amt < 1000000) { setStatus('Enter an integer >= 1000000', true); return; }
+      setStatus('Burning...');
+      try {
+        const resp = await fetch(`${BACKEND}/burn`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount, amount: amt })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Burn failed: ' + (data.error || JSON.stringify(data)), true);
+          return;
+        }
+        setStatus(`Burn recorded: ${data.recorded_burn} coins. Your today total: ${data.today_burn_total}`);
+        burnAmt.value = '';
+        await fetchPlayer();
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
+    });
+
+    claimBtn.addEventListener('click', async () => {
+      setStatus('Claiming your share...');
+      try {
+        const resp = await fetch(`${BACKEND}/claim`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Claim failed: ' + (data.error || JSON.stringify(data)), true);
+          return;
+        }
+        setStatus(`Claim awarded ${data.awarded_kahel} KAHEL. In-game balance: ${data.kahel_in_game}`);
+        await fetchPlayer();
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
+    });
+
+    convertBtn.addEventListener('click', async () => {
+      const amt = convertAmt.value || '0';
+      setStatus('Converting...');
+      try {
+        const resp = await fetch(`${BACKEND}/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount, kahel_amount: amt })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Convert failed: ' + (data.error || JSON.stringify(data)), true);
+          return;
+        }
+        setStatus(`Converted to ${data.converted_gems} Gems`);
+        await fetchPlayer();
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
+    });
+
+    cashoutBtn.addEventListener('click', async () => {
+      const amt = cashoutAmt.value || '0';
+      setStatus('Cashout in progress...');
+      try {
+        const resp = await fetch(`${BACKEND}/cashout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount, kahel_amount: amt })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          setStatus('Cashout failed: ' + (data.error || JSON.stringify(data)), true);
+          return;
+        }
+        setStatus(`Cashout success. Tx: ${data.txid || 'unknown'}`);
+        await fetchPlayer();
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopHeartbeat();
+        setStatus('Tab hidden; heartbeat paused (you stop earning).');
+      } else {
+        if (myAccount) {
+          setStatus('Tab active; resuming heartbeat.');
+          startHeartbeat();
+        }
+      }
+    });
+
+    async function startHeartbeat() {
+      if (!myAccount) return;
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      await sendImmediateHeartbeat();
+      heartbeatTimer = setInterval(sendImmediateHeartbeat, HEARTBEAT_INTERVAL_MS);
+    }
+    async function sendImmediateHeartbeat() {
+      try {
+        const resp = await fetch(`${BACKEND}/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: myAccount })
+        });
+        const data = await resp.json();
+        if (!resp.ok) { setStatus('Heartbeat error: ' + (data.error || JSON.stringify(data)), true); return; }
+        coinsEl.textContent = data.coins;
+        gemsEl.textContent = data.gems;
+        rateEl.textContent = data.rate;
+        levelEl.textContent = data.level;
+        kahelEl.textContent = data.kahel_in_game;
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
       }
     }
 
-    async function logout() {
-      if (!account) return;
-      try {
-        await fetch(`${backend}/logout`, {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ account })
-        });
-      } catch (e) { console.error(e); }
-      stopPing();
-      account = null;
-      loginBtn.style.display = 'inline-block';
-      logoutBtn.style
+    (async function init(){ /* nothing to auto-run */ })();
+  </script>
+</body>
+</html>
