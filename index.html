@@ -1,99 +1,155 @@
-
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Free KAHEL Faucet</title>
+  <title>KAHEL Miner</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #fff;
-      text-align: center;
-      padding-top: 80px;
-    }
-    h1 { color: #ffa500; }
-    button {
-      background: #ff6600;
-      border: none;
-      border-radius: 12px;
-      color: white;
-      padding: 15px 40px;
-      font-size: 1.2em;
-      cursor: pointer;
-      margin: 10px;
-      transition: 0.2s;
-    }
-    button:hover { background: #ff8800; }
-    #status {
-      margin-top: 20px;
-      font-size: 1.1em;
-    }
+    body { font-family: Arial, sans-serif; background: #0b0b10; color: #eee; display:flex; justify-content:center; align-items:flex-start; padding:40px; }
+    .card { background: #111; padding:20px; border-radius:12px; width:420px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+    h1 { color:#ffb347; margin:0 0 10px 0; }
+    .row { display:flex; justify-content:space-between; margin:8px 0; }
+    button { background:#ff6600; border:none; border-radius:10px; padding:8px 12px; cursor:pointer; color:white; font-weight:600; }
+    button.secondary { background:#444; }
+    #status { margin-top:12px; font-size:0.95em; color:#ddd; }
+    .nums { font-weight:700; color:#fff; }
   </style>
 </head>
 <body>
-  <h1>🔥 Free KAHEL Faucet 🔥</h1>
-  <p id="account">Not logged in</p>
-  <button id="loginBtn">Login with MyCloudWallet or something.</button>
-  <button id="claimBtn" style="display:none;">Get 1 KAHEL</button>
-  <div id="status"></div>
+  <div class="card">
+    <h1>🔥 KAHEL Miner (online-only)</h1>
+
+    <p id="account">Not logged in</p>
+
+    <div class="row"><div>Coins/sec</div><div class="nums" id="rate">—</div></div>
+    <div class="row"><div>Coins</div><div class="nums" id="coins">—</div></div>
+    <div class="row"><div>Gems</div><div class="nums" id="gems">—</div></div>
+    <div class="row"><div>Level</div><div class="nums" id="level">—</div></div>
+    <div class="row"><div>In-game KAHEL</div><div class="nums" id="kahel">—</div></div>
+
+    <div style="margin-top:12px;">
+      <button id="loginBtn">Login (MyCloudWallet / WAX)</button>
+      <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
+    </div>
+
+    <hr style="margin:14px 0;border-color:#222">
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="upgradeBtn">Upgrade Miner (cost shown)</button>
+      <button id="burnBtn">Burn Coins → Kahel</button>
+      <button id="convertBtn">Convert Kahel → Gems (1:1)</button>
+      <button id="cashoutBtn">Cashout Kahel → My Kahel (on-chain)</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
   <script src="waxjs.js"></script>
   <script>
-    const wax = new waxjs.WaxJS({
-  rpcEndpoint: 'https://wax.greymass.com',
-  tryAutoLogin: true
-});
-
-    const backendURL = 'https://rupdud143backend.onrender.com/redeem';
+    // config
+    const backend = 'https://rupdud143backend.onrender.com'; // your backend
+    const PING_INTERVAL_MS = 1000; // 1s (server awards coins per second)
+    const MIN_BURN = 1000000;
 
     const loginBtn = document.getElementById('loginBtn');
-    const claimBtn = document.getElementById('claimBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
     const accountEl = document.getElementById('account');
     const statusEl = document.getElementById('status');
+    const coinsEl = document.getElementById('coins');
+    const gemsEl = document.getElementById('gems');
+    const rateEl = document.getElementById('rate');
+    const levelEl = document.getElementById('level');
+    const kahelEl = document.getElementById('kahel');
 
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    const burnBtn = document.getElementById('burnBtn');
+    const convertBtn = document.getElementById('convertBtn');
+    const cashoutBtn = document.getElementById('cashoutBtn');
+
+    // your local waxjs wrapper usage (same as before)
+    const wax = new waxjs.WaxJS({
+      rpcEndpoint: 'https://wax.greymass.com',
+      tryAutoLogin: true
+    });
+
+    let account = null;
+    let pingTimer = null;
+    let latestUserState = null;
+
+    async function setStatus(text) { statusEl.textContent = text; }
+
+    function reflectState(user) {
+      latestUserState = user;
+      accountEl.textContent = 'Account: ' + user.account;
+      coinsEl.textContent = user.coins.toLocaleString();
+      gemsEl.textContent = user.gems.toLocaleString();
+      rateEl.textContent = user.rate + ' /sec';
+      levelEl.textContent = user.level;
+      kahelEl.textContent = user.kahel_offchain.toLocaleString();
+      // update upgrade button label
+      const cost = 5 + (user.level || 0);
+      upgradeBtn.textContent = `Upgrade Miner (cost ${cost} Gems)`;
+    }
+
+    async function fetchState() {
+      if (!account) return;
+      try {
+        const r = await fetch(`${backend}/state/${account}`);
+        const j = await r.json();
+        if (j.success) reflectState(j.user);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function startPing() {
+      if (pingTimer) clearInterval(pingTimer);
+      pingTimer = setInterval(async () => {
+        try {
+          const r = await fetch(`${backend}/ping`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ account })
+          });
+          const j = await r.json();
+          if (j.success) reflectState(j.user);
+        } catch (e) {
+          console.error('ping error', e);
+        }
+      }, PING_INTERVAL_MS);
+    }
+
+    async function stopPing() {
+      if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    }
+
+    // login flow (using wax.login)
     async function login() {
       try {
         const userAccount = await wax.login();
-        accountEl.textContent = "Logged in as " + userAccount;
-        loginBtn.style.display = "none";
-        claimBtn.style.display = "inline-block";
-        statusEl.textContent = "";
-      } catch (e) {
-        statusEl.textContent = "Login failed: " + e.message;
-      }
-    }
-
-    async function claim() {
-      if (!wax.userAccount) return statusEl.textContent = "Please login first.";
-
-      statusEl.textContent = "Requesting 1 KAHEL...";
-
-      try {
-        const resp = await fetch(backendURL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ account: wax.userAccount, amount: 1 })
+        account = userAccount;
+        accountEl.textContent = 'Account: ' + account;
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        await fetch(`${backend}/login`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ account })
         });
-        
-        const data = await resp.json();
-        
-        if (!resp.ok || !data.success) {
-          console.error("Full backend error:", data);   // <--- print full JSON in console
-          statusEl.textContent = "❌ Error: " + (data.message || JSON.stringify(data.details) || "Unknown error");
-          return;
-        }
-        
-        statusEl.textContent = `✅ Sent 1 KAHEL! TX: ${data.txid}`;
-
-      } catch (err) {
-        statusEl.textContent = "Network error: " + err.message;
+        await fetchState();
+        startPing();
+        setStatus('Logged in and mining...');
+      } catch (e) {
+        setStatus('Login failed: ' + (e.message || e));
       }
     }
 
-    loginBtn.addEventListener('click', login);
-    claimBtn.addEventListener('click', claim);
-  </script>
-  
-</body>
-</html>
-
+    async function logout() {
+      if (!account) return;
+      try {
+        await fetch(`${backend}/logout`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ account })
+        });
+      } catch (e) { console.error(e); }
+      stopPing();
+      account = null;
+      loginBtn.style.display = 'inline-block';
+      logoutBtn.style
