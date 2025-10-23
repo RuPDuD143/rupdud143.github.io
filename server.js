@@ -36,15 +36,6 @@ app.use(cors({
   methods: ['GET','POST']
 }));
 
-
-// Rate limiter
-app.use(rateLimit({
-  windowMs: parseInt(process.env.IP_RATE_LIMIT_WINDOW_MS || '60000'),
-  max: parseInt(process.env.IP_RATE_LIMIT_MAX || '100'),
-  standardHeaders: true,
-  legacyHeaders: false
-}));
-
 // DB
 const db = new Database('faucet_game.db');
 
@@ -341,6 +332,12 @@ app.post('/convert', (req, res) => {
 });
 
 // cashout: send on-chain KAHEL from faucet to user's account
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5, // only 5 cashouts per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false
+});
 app.post('/cashout', async (req, res) => {
   try {
     const { account, kahel_amount } = req.body;
@@ -409,3 +406,4 @@ app.get('/claims/recent', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
