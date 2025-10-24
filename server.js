@@ -195,17 +195,22 @@ app.get('/pool/:account', (req, res) => {
     const total = totalRow ? totalRow.total : 0;
     const userTotal = userRow ? userRow.total : 0;
 
+    const POOL_GEMS = 1000; // matches frontend display
+    const approxShare = total > 0 ? ((userTotal / total) * POOL_GEMS).toFixed(2) : 0;
+
     res.json({
       ok: true,
       day,
       total_submissions: total,
-      user_submission: userTotal
+      user_submission: userTotal,
+      user_approx_share: approxShare // 👈 ADD THIS
     });
   } catch (e) {
     console.error('pool info error', e);
     res.status(500).json({ error: e.message });
   }
 });
+
 
 // cashout: exchange gems -> onchain KAHEL (1000 gems -> 1 KAHEL). Server must be configured with FAUCET_PRIVKEY
 const limiter = rateLimit({
@@ -273,5 +278,6 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
