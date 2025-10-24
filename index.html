@@ -98,32 +98,32 @@
     <div class="right-col">
       <div class="submit-area">
         <div class="topbar">
-          <h2>Submit Coins for Gems Share</h2>
-          <div class="small">Submissions recorded per UTC day</div>
+          <h2>Submit Coins for a Share of the Gem Pool</h2>
+          <div class="small">Submissions reset every UTC day</div>
         </div>
-
-        <div>
-          <div class="label"><span>Current Coins</span><span id="rightCoins">0</span></div>
-          <div class="label"><span>Current Gems</span><span id="rightGems">0</span></div>
+      
+        <div class="stats">
+          <div class="label"><span>Total Gem Reward Pool</span><span id="poolGems">1000</span></div>
+          <div class="label"><span>Total Coin Submissions</span><span id="totalSubmits">0</span></div>
+          <div class="label"><span>Your Coin Submission</span><span id="yourSubmit">0</span></div>
+          <div class="label"><span>Your Approx. Share</span><span id="yourShare">0</span></div>
         </div>
-
-        <div style="margin-top:12px;">
+      
+        <hr style="border: none; border-top: 1px solid #333; margin: 10px 0;">
+      
+        <div id="submitSection">
           <div class="submit-row">
-            <input id="submitAmt" type="number" placeholder="Amount of coins to submit" min="1" />
-            <button id="submitBtn">Submit for Gems Share</button>
-            <button id="cashoutBtn" class="secondary">Cashout 1000 Gems → 1 KAHEL</button>
+            <input id="submitAmt" type="number" placeholder="Minimum: 15,000" min="15000" />
+            <button id="submitBtn">Submit Coins</button>
           </div>
-          <div class="note">Submitting coins records them into today's pool. Gems will be distributed later by admin logic (or manual payout).</div>
+          <div class="note">Submit at least 15,000 coins to join today's Gem Pool.</div>
         </div>
-
-        <div style="margin-top:6px;">
-          <div class="note">Tip: Miner produces coins locally. Press <strong>Take Coins</strong> to transfer mined coins to your account (server).</div>
-        </div>
-
+      
         <div style="margin-top:auto;">
           <div class="note">Server: <span id="serverUrl"></span></div>
         </div>
       </div>
+
 
       <div class="right-bottom">
         <div>
