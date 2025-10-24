@@ -148,7 +148,6 @@
     const yourSubmit = document.getElementById('yourSubmit');
     const yourShare = document.getElementById('yourShare');
     const poolGems = document.getElementById('poolGems');
-    const cashoutBtn = document.getElementById('cashoutBtn');
 
     const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
     let myAccount = null;
@@ -223,13 +222,7 @@
       setStatus('Submitted '+d.submitted+' coins.'); submitAmt.value=''; await fetchPlayer();
     };
 
-    cashoutBtn.onclick=async()=>{
-      if(!myAccount)return setStatus('Login first',true);
-      setStatus('Cashout...');
-      const r=await fetch(`${BACKEND}/cashout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:myAccount,gems_to_cashout:1000})});
-      const d=await r.json(); if(!r.ok)return setStatus('Cashout failed: '+d.error,true);
-      setStatus('Cashout success.'); await fetchPlayer();
-    };
+    
 
     loginBtn.onclick=async()=>{
       try{
