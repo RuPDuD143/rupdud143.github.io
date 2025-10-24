@@ -210,6 +210,7 @@
           setStatus('Error fetching player: ' + (data.error || JSON.stringify(data)), true);
           return;
         }
+        console.log(data.miner_level);
         minerLevel = data.miner_level || 0;
         minerLevelEl.textContent = minerLevel;
         computeRateAndCap();
@@ -218,6 +219,7 @@
         if (minedCoins > minerCap) minedCoins = minerCap;
         refreshMinedDisplay();
         setStatus('Player data loaded.');
+        console.log("player set");
       } catch (e) {
         setStatus('Network error: ' + e.message, true);
       }
