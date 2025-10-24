@@ -34,7 +34,7 @@ const api = signatureProvider ? new Api({
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: BACKEND_ORIGINS }));
+app.use(cors());
 
 // DB (file name: minergame.db)
 const db = new Database('minergame.db');
@@ -249,3 +249,4 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
