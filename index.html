@@ -2,104 +2,207 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>KAHEL Miner Game — Faucet (Pool Burns)</title>
+  <title>KAHEL Miner Game — Miner UI (Frontend)</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #0b0b0b; color: #fff; padding: 40px; text-align:center; }
-    h1 { color: #ffa500; }
-    .card { background: #111; padding: 20px; border-radius: 12px; display:inline-block; min-width:360px; }
-    button { background: #ff6600; border: none; border-radius: 10px; color: white; padding: 10px 18px; font-size: 1rem; cursor: pointer; margin:6px; }
-    input { padding:6px; border-radius:6px; border:1px solid #333; margin-left:6px; }
-    .stat { font-size:1.05rem; margin:6px 0; }
-    .note { font-size:0.85rem; color:#bbb; margin-top:8px; }
+    :root {
+      --bg: #0b0b0b;
+      --card: #111;
+      --accent: #ff6600;
+      --muted: #bbb;
+      --fg: #fff;
+    }
+    html,body { height:100%; margin:0; font-family: Arial, sans-serif; background:var(--bg); color:var(--fg); }
+    .layout { display:flex; height:100vh; gap:16px; padding:16px; box-sizing:border-box; }
+    /* left: miner panel (full height) */
+    .miner-panel {
+      width:420px;
+      background:var(--card);
+      border-radius:12px;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    .miner-img { width:200px; height:200px; object-fit:cover; border-radius:8px; background:#222; }
+    .label { margin-top:12px; font-size:0.95rem; color:var(--muted); width:100%; display:flex; justify-content:space-between; }
+    .big { font-size:1.25rem; color:var(--fg); margin-top:8px; }
+    .controls { margin-top:14px; display:flex; gap:8px; }
+    button { background:var(--accent); border:none; color:white; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button.secondary { background:#444; }
+    input[type="number"], input[type="text"] { padding:8px; border-radius:6px; border:1px solid #333; background:#0f0f0f; color:var(--fg); width:160px; }
+    /* right: vertical flexible area */
+    .right-col { flex:1; display:flex; flex-direction:column; gap:12px; }
+    .submit-area {
+      background:var(--card);
+      border-radius:12px;
+      padding:16px;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .submit-area h2 { margin:0; color:var(--accent); }
+    .submit-row { display:flex; gap:8px; align-items:center; }
+    .note { font-size:0.85rem; color:var(--muted); }
+    /* bottom navbar (right side) */
+    .right-bottom {
+      height:76px;
+      background:var(--card);
+      border-radius:12px;
+      padding:12px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      box-sizing:border-box;
+    }
+    .stat { font-size:1.05rem; }
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:8px;
+    }
+    .status { color:#cfcfcf; font-size:0.95rem; margin-top:8px; height:20px;}
+    .small { font-size:0.9rem; color:var(--muted); }
   </style>
 </head>
 <body>
-  <h1>🔥 KAHEL Miner Game (Pool Burns) 🔥</h1>
-  <div class="card">
-    <p id="account">Not logged in</p>
-    <div>
-      <button id="loginBtn">Login (MyCloudWallet / WAX)</button>
-      <button id="logoutBtn" style="display:none">Logout</button>
+  <div class="layout">
+    <div class="miner-panel">
+      <img src="miner.png" alt="Miner" class="miner-img" id="minerImg" />
+      <div class="label"><span class="small">Account:</span><span id="accountDisplay">Not logged in</span></div>
+
+      <div class="label"><span>Miner Level</span><span id="minerLevel">0</span></div>
+      <div class="label"><span>Mined Coins</span><span id="minedCoins">0</span></div>
+      <div class="label"><span>Coin Rate (per min)</span><span id="coinRate">0</span></div>
+      <div class="label"><span>Cap</span><span id="minerCap">0</span></div>
+
+      <div class="controls">
+        <button id="upgradeBtn">Upgrade Miner</button>
+        <button id="takeBtn" class="secondary">Take Coins</button>
+      </div>
+
+      <div style="width:100%; margin-top:10px; text-align:left;">
+        <div class="note">Miner generates coins locally (front-end) once per minute. When mined coins reach cap, generation pauses until you press <strong>Take Coins</strong>.</div>
+        <div class="status" id="status">Not logged in.</div>
+      </div>
+
+      <div style="margin-top:auto; width:100%; text-align:left;">
+        <div style="margin-top:12px;">
+          <button id="loginBtn">Login (MyCloudWallet / WAX)</button>
+          <button id="logoutBtn" style="display:none" class="secondary">Logout</button>
+        </div>
+      </div>
     </div>
 
-    <div id="controls" style="display:none; margin-top:12px;">
-      <div class="stat">Coins: <span id="coins">0</span></div>
-      <div class="stat">Gems: <span id="gems">0</span></div>
-      <div class="stat">Rate: <span id="rate">1</span> coin/sec (level <span id="level">0</span>)</div>
-      <div class="stat">In-game KAHEL: <span id="kahel_in_game">0.00</span></div>
-      <div class="stat">Today's burned (you): <span id="today_burn">0</span></div>
-      <div class="stat">Claimed today: <span id="claimed_today">no</span></div>
+    <div class="right-col">
+      <div class="submit-area">
+        <div class="topbar">
+          <h2>Submit Coins for Gems Share</h2>
+          <div class="small">Submissions recorded per UTC day</div>
+        </div>
 
-      <div style="margin-top:12px;">
-        <button id="upgradeBtn">Upgrade Miner (cost: <span id="upgradeCost">5</span> gems)</button>
+        <div>
+          <div class="label"><span>Current Coins</span><span id="rightCoins">0</span></div>
+          <div class="label"><span>Current Gems</span><span id="rightGems">0</span></div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="submit-row">
+            <input id="submitAmt" type="number" placeholder="Amount of coins to submit" min="1" />
+            <button id="submitBtn">Submit for Gems Share</button>
+            <button id="cashoutBtn" class="secondary">Cashout 1000 Gems → 1 KAHEL</button>
+          </div>
+          <div class="note">Submitting coins records them into today's pool. Gems will be distributed later by admin logic (or manual payout).</div>
+        </div>
+
+        <div style="margin-top:6px;">
+          <div class="note">Tip: Miner produces coins locally. Press <strong>Take Coins</strong> to transfer mined coins to your account (server).</div>
+        </div>
+
+        <div style="margin-top:auto;">
+          <div class="note">Server: <span id="serverUrl"></span></div>
+        </div>
       </div>
 
-      <div style="margin-top:8px;">
-        <label>Burn Coins (min 1,000,000):</label>
-        <input id="burnAmt" placeholder="1000000" style="width:120px" />
-        <button id="burnBtn">Burn</button>
+      <div class="right-bottom">
+        <div>
+          <div class="stat">Coins: <strong id="navCoins">0</strong></div>
+        </div>
+        <div>
+          <div class="stat">Gems: <strong id="navGems">0</strong></div>
+        </div>
       </div>
-
-      <div style="margin-top:8px;">
-        <button id="claimBtn">Claim today's share of 1.00 KAHEL pool</button>
-      </div>
-
-      <div style="margin-top:8px;">
-        <label>Convert KAHEL to Gems (1:1):</label>
-        <input id="convertAmt" placeholder="1.00" style="width:80px" />
-        <button id="convertBtn">Convert</button>
-      </div>
-
-      <div style="margin-top:8px;">
-        <label>Cashout to on-chain KAHEL:</label>
-        <input id="cashoutAmt" placeholder="1.00" style="width:80px" />
-        <button id="cashoutBtn">Cashout</button>
-      </div>
-
-      <div id="status" style="margin-top:12px; color:#cfcfcf;"></div>
-      <div class="note">Notes: Burns are pooled per UTC day. Claim computes your share of a single 1.00 KAHEL pool. You can burn multiple times; only burns before your claim are counted.</div>
     </div>
   </div>
 
   <script src="waxjs.js"></script>
   <script>
-    const BACKEND = 'https://rupdud143backend.onrender.com'; // change as needed
-    const HEARTBEAT_INTERVAL_MS = 5000;
-
-    const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+    // CONFIG
+    const BACKEND = 'https://rupdud143backend.onrender.com'; // change if needed
+    document.getElementById('serverUrl').textContent = BACKEND;
 
     // DOM
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
-    const accountEl = document.getElementById('account');
-    const controls = document.getElementById('controls');
-    const coinsEl = document.getElementById('coins');
-    const gemsEl = document.getElementById('gems');
-    const rateEl = document.getElementById('rate');
-    const levelEl = document.getElementById('level');
-    const kahelEl = document.getElementById('kahel_in_game');
-    const todayBurnEl = document.getElementById('today_burn');
-    const claimedEl = document.getElementById('claimed_today');
-    const upgradeBtn = document.getElementById('upgradeBtn');
-    const upgradeCostEl = document.getElementById('upgradeCost');
-    const burnBtn = document.getElementById('burnBtn');
-    const burnAmt = document.getElementById('burnAmt');
-    const claimBtn = document.getElementById('claimBtn');
-    const convertBtn = document.getElementById('convertBtn');
-    const convertAmt = document.getElementById('convertAmt');
-    const cashoutBtn = document.getElementById('cashoutBtn');
-    const cashoutAmt = document.getElementById('cashoutAmt');
+    const accountDisplay = document.getElementById('accountDisplay');
     const statusEl = document.getElementById('status');
 
-    let heartbeatTimer = null;
+    const minerLevelEl = document.getElementById('minerLevel');
+    const minedCoinsEl = document.getElementById('minedCoins');
+    const coinRateEl = document.getElementById('coinRate');
+    const minerCapEl = document.getElementById('minerCap');
+
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    const takeBtn = document.getElementById('takeBtn');
+
+    const submitAmt = document.getElementById('submitAmt');
+    const submitBtn = document.getElementById('submitBtn');
+    const cashoutBtn = document.getElementById('cashoutBtn');
+
+    const rightCoins = document.getElementById('rightCoins');
+    const rightGems = document.getElementById('rightGems');
+    const navCoins = document.getElementById('navCoins');
+    const navGems = document.getElementById('navGems');
+
+    // WAX login (local waxjs)
+    const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+
     let myAccount = null;
+
+    // Miner front-end state
+    let minerLevel = 0;
+    let minedCoins = 0;
+    let minerCap = 0;
+    let coinRate = 0; // coins per minute
+    let minerTimer = null;
 
     function setStatus(msg, err=false) {
       statusEl.textContent = msg;
       statusEl.style.color = err ? '#ff8080' : '#cfcfcf';
     }
 
+    function computeRateAndCap() {
+      coinRate = (minerLevel || 0) * 10; // per minute
+      minerCap = (minerLevel || 0) * 100;
+      coinRateEl.textContent = coinRate;
+      minerCapEl.textContent = minerCap;
+    }
+
+    // UI updater
+    function refreshMinedDisplay() {
+      minedCoinsEl.textContent = minedCoins;
+    }
+    function refreshRightStats(data) {
+      rightCoins.textContent = data.coins || 0;
+      rightGems.textContent = data.gems || 0;
+      navCoins.textContent = data.coins || 0;
+      navGems.textContent = data.gems || 0;
+    }
+
+    // fetch player
     async function fetchPlayer() {
+      if (!myAccount) return;
       try {
         const resp = await fetch(`${BACKEND}/player/${myAccount}`);
         const data = await resp.json();
@@ -107,81 +210,71 @@
           setStatus('Error fetching player: ' + (data.error || JSON.stringify(data)), true);
           return;
         }
-        coinsEl.textContent = data.coins;
-        gemsEl.textContent = data.gems;
-        rateEl.textContent = data.rate;
-        levelEl.textContent = data.level;
-        kahelEl.textContent = data.kahel_in_game;
-        todayBurnEl.textContent = data.today_burn_total;
-        claimedEl.textContent = data.has_claimed_today ? 'yes' : 'no';
-        upgradeCostEl.textContent = 5 + data.level;
+        minerLevel = data.miner_level || 0;
+        minerLevelEl.textContent = minerLevel;
+        computeRateAndCap();
+        refreshRightStats(data);
+        // ensure minedCoins doesn't exceed cap (if someone changed level)
+        if (minedCoins > minerCap) minedCoins = minerCap;
+        refreshMinedDisplay();
+        setStatus('Player data loaded.');
       } catch (e) {
         setStatus('Network error: ' + e.message, true);
       }
     }
 
-    async function sendHeartbeat() {
+    // Miner loop: runs on frontend, once per minute
+    function startMiner() {
+      if (minerTimer) clearInterval(minerTimer);
+      // run first tick immediately so user sees progress
+      minerTick();
+      minerTimer = setInterval(minerTick, 60 * 1000); // 60,000 ms per minute
+    }
+    function stopMiner() {
+      if (minerTimer) { clearInterval(minerTimer); minerTimer = null; }
+    }
+    function minerTick() {
+      if (!minerLevel || coinRate <= 0) return;
+      if (minedCoins >= minerCap) {
+        setStatus('Miner is full. Press Take Coins to collect.', false);
+        return;
+      }
+      const add = coinRate; // per minute
+      minedCoins = Math.min(minerCap, minedCoins + add);
+      refreshMinedDisplay();
+      if (minedCoins >= minerCap) {
+        setStatus('Miner reached cap. Press Take Coins to collect.', false);
+      } else {
+        setStatus(`Mined +${add} coins (rate ${coinRate}/min).`, false);
+      }
+    }
+
+    // Take coins: send mined coins to server to add into user's coins
+    takeBtn.addEventListener('click', async () => {
+      if (!myAccount) { setStatus('Login first.', true); return; }
+      if (!minedCoins || minedCoins <= 0) { setStatus('No mined coins to take.', true); return; }
+      setStatus('Sending mined coins to server...');
       try {
-        const resp = await fetch(`${BACKEND}/heartbeat`, {
+        const resp = await fetch(`${BACKEND}/take`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: myAccount })
+          body: JSON.stringify({ account: myAccount, amount: Math.floor(minedCoins) })
         });
         const data = await resp.json();
-        if (!resp.ok) {
-          setStatus('Heartbeat error: ' + (data.error || JSON.stringify(data)), true);
-          return;
-        }
-        coinsEl.textContent = data.coins;
-        gemsEl.textContent = data.gems;
-        rateEl.textContent = data.rate;
-        levelEl.textContent = data.level;
-        kahelEl.textContent = data.kahel_in_game;
+        if (!resp.ok) { setStatus('Take failed: ' + (data.error || JSON.stringify(data)), true); return; }
+        setStatus(`Taken ${data.added} coins. Server coins: ${data.coins}`);
+        minedCoins = 0;
+        refreshMinedDisplay();
+        await fetchPlayer();
       } catch (e) {
         setStatus('Network error: ' + e.message, true);
       }
-    }
-
-    async function startHeartbeat() {
-      if (!myAccount) return;
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      await sendHeartbeat();
-      heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
-    }
-    function stopHeartbeat() {
-      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-    }
-
-    loginBtn.addEventListener('click', async () => {
-      try {
-        const userAccount = await wax.login();
-        myAccount = userAccount;
-        accountEl.textContent = 'Logged in as ' + myAccount;
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-        controls.style.display = 'block';
-        setStatus('Logged in. Starting heartbeat...');
-        await fetch(`${BACKEND}/player/${myAccount}`); // ensure user exists
-        await startHeartbeat();
-        await fetchPlayer();
-      } catch (e) {
-        setStatus('Login failed: ' + (e.message || e), true);
-      }
     });
 
-    logoutBtn.addEventListener('click', () => {
-      if (wax && wax.logout) try { wax.logout(); } catch(e){}
-      setStatus('Logged out.');
-      accountEl.textContent = 'Not logged in';
-      loginBtn.style.display = 'inline-block';
-      logoutBtn.style.display = 'none';
-      controls.style.display = 'none';
-      myAccount = null;
-      stopHeartbeat();
-    });
-
+    // Upgrade miner
     upgradeBtn.addEventListener('click', async () => {
-      setStatus('Upgrading...');
+      if (!myAccount) { setStatus('Login first.', true); return; }
+      setStatus('Upgrading miner...');
       try {
         const resp = await fetch(`${BACKEND}/upgrade`, {
           method: 'POST',
@@ -189,95 +282,48 @@
           body: JSON.stringify({ account: myAccount })
         });
         const data = await resp.json();
-        if (!resp.ok) {
-          setStatus('Upgrade failed: ' + (data.error || JSON.stringify(data)), true);
-          return;
-        }
-        setStatus(`Upgraded to level ${data.new_level}. Rate: ${data.new_rate}`);
+        if (!resp.ok) { setStatus('Upgrade failed: ' + (data.error || JSON.stringify(data)), true); return; }
+        setStatus(`Upgraded to level ${data.new_level}.`);
         await fetchPlayer();
       } catch (e) {
         setStatus('Network error: ' + e.message, true);
       }
     });
 
-    burnBtn.addEventListener('click', async () => {
-      const amt = parseInt(burnAmt.value || '0', 10);
-      if (!amt || amt < 1000000) { setStatus('Enter an integer >= 1000000', true); return; }
-      setStatus('Burning...');
+    // Submit coins to daily pool
+    submitBtn.addEventListener('click', async () => {
+      if (!myAccount) { setStatus('Login first.', true); return; }
+      const amt = Math.floor(Number(submitAmt.value || 0));
+      if (!amt || amt <= 0) { setStatus('Enter amount > 0', true); return; }
+      setStatus('Submitting coins...');
       try {
-        const resp = await fetch(`${BACKEND}/burn`, {
+        const resp = await fetch(`${BACKEND}/submit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ account: myAccount, amount: amt })
         });
         const data = await resp.json();
-        if (!resp.ok) {
-          setStatus('Burn failed: ' + (data.error || JSON.stringify(data)), true);
-          return;
-        }
-        setStatus(`Burn recorded: ${data.recorded_burn} coins. Your today total: ${data.today_burn_total}`);
-        burnAmt.value = '';
+        if (!resp.ok) { setStatus('Submit failed: ' + (data.error || JSON.stringify(data)), true); return; }
+        setStatus(`Submitted ${data.submitted} coins for today.`);
+        submitAmt.value = '';
         await fetchPlayer();
       } catch (e) {
         setStatus('Network error: ' + e.message, true);
       }
     });
 
-    claimBtn.addEventListener('click', async () => {
-      setStatus('Claiming your share...');
-      try {
-        const resp = await fetch(`${BACKEND}/claim`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: myAccount })
-        });
-        const data = await resp.json();
-        if (!resp.ok) {
-          setStatus('Claim failed: ' + (data.error || JSON.stringify(data)), true);
-          return;
-        }
-        setStatus(`Claim awarded ${data.awarded_kahel} KAHEL. In-game balance: ${data.kahel_in_game}`);
-        await fetchPlayer();
-      } catch (e) {
-        setStatus('Network error: ' + e.message, true);
-      }
-    });
-
-    convertBtn.addEventListener('click', async () => {
-      const amt = convertAmt.value || '0';
-      setStatus('Converting...');
-      try {
-        const resp = await fetch(`${BACKEND}/convert`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: myAccount, kahel_amount: amt })
-        });
-        const data = await resp.json();
-        if (!resp.ok) {
-          setStatus('Convert failed: ' + (data.error || JSON.stringify(data)), true);
-          return;
-        }
-        setStatus(`Converted to ${data.converted_gems} Gems`);
-        await fetchPlayer();
-      } catch (e) {
-        setStatus('Network error: ' + e.message, true);
-      }
-    });
-
+    // Cashout (1000 gems -> 1 KAHEL) - kept as simple server endpoint (server should be configured)
     cashoutBtn.addEventListener('click', async () => {
-      const amt = cashoutAmt.value || '0';
-      setStatus('Cashout in progress...');
+      if (!myAccount) { setStatus('Login first.', true); return; }
+      setStatus('Requesting cashout...');
       try {
         const resp = await fetch(`${BACKEND}/cashout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: myAccount, kahel_amount: amt })
+          body: JSON.stringify({ account: myAccount, gems_to_cashout: 1000 })
         });
         const data = await resp.json();
-        if (!resp.ok) {
-          setStatus('Cashout failed: ' + (data.error || JSON.stringify(data)), true);
-          return;
-        }
+        if (!resp.ok) { setStatus('Cashout failed: ' + (data.error || JSON.stringify(data)), true); return; }
         setStatus(`Cashout success. Tx: ${data.txid || 'unknown'}`);
         await fetchPlayer();
       } catch (e) {
@@ -285,44 +331,53 @@
       }
     });
 
+    // Login/logout
+    loginBtn.addEventListener('click', async () => {
+      try {
+        const userAccount = await wax.login();
+        myAccount = userAccount;
+        accountDisplay.textContent = myAccount;
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        setStatus('Logged in. Fetching player...');
+        await fetchPlayer();
+        startMiner();
+      } catch (e) {
+        setStatus('Login failed: ' + (e.message || e), true);
+      }
+    });
+    logoutBtn.addEventListener('click', () => {
+      try { if (wax && wax.logout) wax.logout(); } catch(e){}
+      myAccount = null;
+      accountDisplay.textContent = 'Not logged in';
+      loginBtn.style.display = 'inline-block';
+      logoutBtn.style.display = 'none';
+      stopMiner();
+      setStatus('Logged out.');
+    });
+
+    // visibility handling - pause miner when tab hidden
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        stopHeartbeat();
-        setStatus('Tab hidden; heartbeat paused (you stop earning).');
+        stopMiner();
+        setStatus('Tab hidden: miner paused.');
       } else {
         if (myAccount) {
-          setStatus('Tab active; resuming heartbeat.');
-          startHeartbeat();
+          setStatus('Tab active: miner resumed.');
+          startMiner();
+          fetchPlayer();
         }
       }
     });
 
-    async function startHeartbeat() {
-      if (!myAccount) return;
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      await sendImmediateHeartbeat();
-      heartbeatTimer = setInterval(sendImmediateHeartbeat, HEARTBEAT_INTERVAL_MS);
-    }
-    async function sendImmediateHeartbeat() {
-      try {
-        const resp = await fetch(`${BACKEND}/heartbeat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: myAccount })
-        });
-        const data = await resp.json();
-        if (!resp.ok) { setStatus('Heartbeat error: ' + (data.error || JSON.stringify(data)), true); return; }
-        coinsEl.textContent = data.coins;
-        gemsEl.textContent = data.gems;
-        rateEl.textContent = data.rate;
-        levelEl.textContent = data.level;
-        kahelEl.textContent = data.kahel_in_game;
-      } catch (e) {
-        setStatus('Network error: ' + e.message, true);
-      }
-    }
-
-    (async function init(){ /* nothing to auto-run */ })();
+    // init
+    (function init(){
+      // initial UI
+      minerLevel = 0;
+      computeRateAndCap();
+      refreshMinedDisplay();
+      setStatus('Ready. Login to start.');
+    })();
   </script>
 </body>
 </html>
