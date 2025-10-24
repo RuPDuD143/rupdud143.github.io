@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS submits (
   timestamp INTEGER NOT NULL
 )
 `).run();
+db.prepare(`
+CREATE TABLE IF NOT EXISTS rewards_given (
+  account TEXT,
+  day TEXT,
+  PRIMARY KEY (account, day)
+)
+`).run();
+
 
 // prepared statements
 const getUserByAccount = db.prepare('SELECT * FROM users WHERE account = ?');
@@ -79,6 +87,24 @@ const sumSubmissionsByDayAndAccount = db.prepare('SELECT COALESCE(SUM(amount),0)
 function yyyymmdd(ms = Date.now()) {
   const d = new Date(ms);
   return `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
+}
+function distributeGemsForDay(day) {
+  const submits = db.prepare('SELECT account, amount FROM submits WHERE day=?').all(day);
+  if (!submits.length) return;
+
+  const total = submits.reduce((a, b) => a + b.amount, 0);
+  if (!total) return;
+
+  const pool = 1000; // total gems to distribute
+
+  for (const row of submits) {
+    const share = (row.amount / total) * pool;
+    const alreadyGiven = db.prepare('SELECT 1 FROM rewards_given WHERE account=? AND day=?').get(row.account, day);
+    if (alreadyGiven) continue;
+
+    db.prepare('UPDATE users SET gems = gems + ? WHERE account=?').run(share, row.account);
+    db.prepare('INSERT INTO rewards_given (account, day) VALUES (?, ?)').run(row.account, day);
+  }
 }
 
 function ensureUser(account) {
@@ -197,6 +223,9 @@ app.get('/pool/:account', (req, res) => {
 
     const POOL_GEMS = 1000; // matches frontend display
     const approxShare = total > 0 ? ((userTotal / total) * POOL_GEMS).toFixed(2) : 0;
+    // Auto-distribute last contribution's gems
+    const last = db.prepare('SELECT day FROM submits WHERE account=? ORDER BY day DESC LIMIT 1').get(account);
+  if (last) distributeGemsForDay(last.day);
 
     res.json({
       ok: true,
@@ -278,6 +307,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
