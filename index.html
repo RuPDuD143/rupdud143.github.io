@@ -178,7 +178,7 @@
         totalSubmits.textContent=d.total_submissions;
         yourSubmit.textContent=d.user_submission;
         yourShare.textContent=d.user_approx_share;
-        if(d.user_submission>=15000){
+        if(d.user_submission>=10){
           submitSection.style.display='none';
           submitNote.textContent="You've already joined today's Gem Pool.";
         }else{
@@ -215,7 +215,7 @@
     submitBtn.onclick=async()=>{
       if(!myAccount)return setStatus('Login first',true);
       const amt=Math.floor(Number(submitAmt.value||0));
-      if(amt<15000)return setStatus('Minimum 15,000 coins',true);
+      if(amt<10)return setStatus('Minimum 10 coins',true);
       setStatus('Submitting...');
       const r=await fetch(`${BACKEND}/submit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:myAccount,amount:amt})});
       const d=await r.json(); if(!r.ok)return setStatus('Submit failed: '+d.error,true);
