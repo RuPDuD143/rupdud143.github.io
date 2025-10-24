@@ -191,7 +191,7 @@
 
     // UI updater
     function refreshMinedDisplay() {
-      minedCoinsEl.textContent = minedCoins;
+      minedCoinsEl.textContent = minedCoins.toFixed(2);
     }
     function refreshRightStats(data) {
       rightCoins.textContent = data.coins || 0;
@@ -226,25 +226,30 @@
     // Miner loop: runs on frontend, once per minute
     function startMiner() {
       if (minerTimer) clearInterval(minerTimer);
-      // run first tick immediately so user sees progress
-      minerTimer = setInterval(minerTick, 60 * 1000); // 60,000 ms per minute
+      minerTimer = setInterval(minerTick, 1000); // once per second
+      setStatus('Miner started. Mining every second.');
     }
     function stopMiner() {
       if (minerTimer) { clearInterval(minerTimer); minerTimer = null; }
     }
+    // Adds (miner_level * 10) / 60 coins per second, rounded to 2 decimals
     function minerTick() {
       if (!minerLevel || coinRate <= 0) return;
       if (minedCoins >= minerCap) {
         setStatus('Miner is full. Press Take Coins to collect.', false);
         return;
       }
-      const add = coinRate; // per minute
+    
+      const add = (minerLevel * 10) / 60; // per second
       minedCoins = Math.min(minerCap, minedCoins + add);
+    
+      // Round down to 2 decimals
+      minedCoins = Math.floor(minedCoins * 100) / 100;
+    
       refreshMinedDisplay();
+    
       if (minedCoins >= minerCap) {
         setStatus('Miner reached cap. Press Take Coins to collect.', false);
-      } else {
-        setStatus(`Mined +${add} coins (rate ${coinRate}/min).`, false);
       }
     }
 
