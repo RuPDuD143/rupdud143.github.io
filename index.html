@@ -61,23 +61,45 @@
   <div class="layout">
     <div class="miner-panel">
       <img src="miner.png" alt="Miner" class="miner-img" id="minerImg" />
-      <div class="label"><span class="small">Account:</span><span id="accountDisplay">Not logged in</span></div>
-
-      <div class="label"><span>Miner Level</span><span id="minerLevel">0</span></div>
-      <div class="label"><span>Mined Coins</span><span id="minedCoins">0</span></div>
-      <div class="label"><span>Coin Rate (per min)</span><span id="coinRate">0</span></div>
-      <div class="label"><span>Cap</span><span id="minerCap">0</span></div>
-
+    
+      <div class="label">
+        <span class="small">Account:</span>
+        <span id="accountDisplay">Not logged in</span>
+      </div>
+    
+      <div class="label">
+        <span>Miner Name</span>
+        <span id="minerName">Basic Miner</span>
+      </div>
+    
+      <div class="label">
+        <span>Mined Coins</span>
+        <span id="minedCoins">0</span>
+      </div>
+    
+      <div class="label">
+        <span>Coin Rate (per min)</span>
+        <span id="coinRate">0</span>
+      </div>
+    
+      <div class="label">
+        <span>Cap</span>
+        <span id="minerCap">0</span>
+      </div>
+    
       <div class="controls">
         <button id="upgradeBtn">Upgrade Miner</button>
         <button id="takeBtn" class="secondary">Take Coins</button>
       </div>
-
+    
       <div style="width:100%; margin-top:10px; text-align:left;">
-        <div class="note">Miner generates coins locally (front-end) once per minute. When mined coins reach cap, generation pauses until you press <strong>Take Coins</strong>.</div>
+        <div class="note">
+          Miner generates coins locally (front-end). When mined coins reach the cap, generation pauses until you press
+          <strong>Take Coins</strong>.
+        </div>
         <div class="status" id="status">Not logged in.</div>
       </div>
-
+    
       <div style="margin-top:auto; width:100%; text-align:left;">
         <div style="margin-top:12px;">
           <button id="loginBtn">Login (MyCloudWallet / WAX)</button>
@@ -85,6 +107,7 @@
         </div>
       </div>
     </div>
+
 
     <div class="right-col">
       <div class="submit-area">
@@ -159,16 +182,46 @@
     function refreshMinedDisplay(){ minedCoinsEl.textContent=minedCoins.toFixed(2); }
     function refreshRightStats(d){ navCoins.textContent=d.coins||0; navGems.textContent=d.gems||0; }
 
-    async function fetchPlayer(){
-      if(!myAccount)return;
-      try{
-        const r=await fetch(`${BACKEND}/player/${myAccount}`); const d=await r.json();
-        if(!r.ok){setStatus('Fetch player failed: '+d.error,true);return;}
-        minerLevel=d.miner_level||0; minerLevelEl.textContent=minerLevel; computeRateAndCap(); refreshRightStats(d);
-        if(minedCoins>minerCap)minedCoins=minerCap; refreshMinedDisplay(); setStatus('Player data loaded.');
+    async function fetchPlayer() {
+      if (!myAccount) return;
+      try {
+        const r = await fetch(`${BACKEND}/player/${myAccount}`);
+        const d = await r.json();
+        if (!r.ok) {
+          setStatus('Fetch player failed: ' + d.error, true);
+          return;
+        }
+    
+        // ✅ Miner level as before
+        minerLevel = d.miner_level || 0;
+        minerLevelEl.textContent = minerLevel;
+    
+        // ✅ New: Handle NFT info and rates
+        const nftName = d.strongest_nft?.name || "Basic Miner";
+        const nftRate = d.mining_rate || 1; // rate per second from backend
+        const nftCap = nftRate * 60 * 10;   // rate/min × 10
+    
+        // Update UI
+        document.getElementById("minerName").textContent = nftName;
+        document.getElementById("coinRate").textContent = (nftRate * 60).toLocaleString();
+        document.getElementById("minerCap").textContent = nftCap.toLocaleString();
+    
+        // Replace old computeRateAndCap (we’ll override cap and rate manually)
+        miningRate = nftRate;   // per second
+        minerCap = nftCap;
+    
+        refreshRightStats(d);
+    
+        if (minedCoins > minerCap) minedCoins = minerCap;
+        refreshMinedDisplay();
+    
+        setStatus('Player data loaded.');
         await fetchPool(); // 🔹 fetch pool after player
-      }catch(e){setStatus('Network error: '+e.message,true);}
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+      }
     }
+
 
     async function fetchPool(){
       if(!myAccount)return;
