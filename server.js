@@ -145,31 +145,33 @@ app.get('/player/:account', async (req, res) => {
 
     const user = ensureUser(account);
 
-    // 🔹 Fetch NFTs from AtomicAssets
+    // 🔹 Try multiple AtomicAssets endpoints
+    const endpoints = [
+      'https://wax.api.atomicassets.io',
+      'https://atomic.wax.eosrio.io',
+      'https://aa-api-wax-mainnet.eosdac.io'
+    ];
+
     let assets = [];
-    try {
-      const response = await fetch(
-        `https://wax.api.atomicassets.io/atomicassets/v1/assets?collection_name=riskyblocks1&owner=${account}&limit=100`
-      );
-    
-      if (!response.ok) throw new Error(`AtomicAssets returned ${response.status}`);
-    
-      const text = await response.text();
-      let data;
+    for (const base of endpoints) {
       try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error("Invalid JSON from AtomicAssets");
+        const url = `${base}/atomicassets/v1/assets?collection_name=riskyblocks1&owner=${account}&limit=100`;
+        const resp = await fetch(url, { timeout: 8000 }); // 8 s timeout
+        if (!resp.ok) {
+          console.warn(`❌ ${base} returned ${resp.status}`);
+          continue;
+        }
+        const text = await resp.text();
+        const data = JSON.parse(text);
+        assets = data.data || [];
+        console.log(`✅ Using AtomicAssets endpoint: ${base}`);
+        break; // success → stop trying
+      } catch (err) {
+        console.warn(`⚠️ Failed ${base}: ${err.message}`);
       }
-    
-      assets = data.data || [];
-    } catch (err) {
-      console.warn("AtomicAssets fetch failed:", err.message);
-      assets = [];
     }
 
-
-    // 🔹 Template ranking and mining rate mapping
+    // 🔹 Template ranking and mining-rate map
     const rankMap = {
       822690: { rank: 7, rate: 40 },
       822688: { rank: 6, rate: 35 },
@@ -180,7 +182,7 @@ app.get('/player/:account', async (req, res) => {
       822385: { rank: 1, rate: 10 }
     };
 
-    // 🔹 Find strongest NFT
+    // 🔹 Pick strongest NFT
     let strongest = null;
     for (const nft of assets) {
       const tpl = parseInt(nft.template?.template_id);
@@ -194,20 +196,15 @@ app.get('/player/:account', async (req, res) => {
         info.rank > strongest.rank ||
         (info.rank === strongest.rank && tierAttr > strongest.tier)
       ) {
-        strongest = {
-          nft,
-          rank: info.rank,
-          rate: info.rate,
-          tier: tierAttr
-        };
+        strongest = { nft, rank: info.rank, rate: info.rate, tier: tierAttr };
       }
     }
 
-    // 🔹 Set mining rate (default 1/sec if no NFT)
+    // 🔹 Default to Basic Miner if none found
     const miningRate = strongest ? strongest.rate : 1;
-    const miningCap = miningRate * 60 * 10; // per minute × 10 (same logic as frontend)
+    const miningCap = miningRate * 10; // cap = rate × 10
 
-    // 🔹 Return player info + NFT summary + mining rate
+    // 🔹 Return player data
     res.json({
       account: user.account,
       name: user.name,
@@ -225,21 +222,13 @@ app.get('/player/:account', async (req, res) => {
             rank: strongest.rank,
             tier: strongest.tier
           }
-        : {
-            name: "Basic Miner",
-            rank: 0,
-            tier: 0,
-            rate: 1
-          }
+        : { name: 'Basic Miner', rank: 0, tier: 0, rate: 1 }
     });
-
   } catch (e) {
     console.error('player error', e);
     res.status(500).json({ error: e.message });
   }
 });
-
-
 // upgrade: cost = 5 + level gems
 app.post('/upgrade', (req, res) => {
   try {
@@ -413,6 +402,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
