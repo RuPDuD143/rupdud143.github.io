@@ -121,18 +121,92 @@ function ensureUser(account) {
 app.get('/', (req, res) => res.send('Miner Game backend online ✅'));
 
 // get player data
-app.get('/player/:account', (req, res) => {
+// app.get('/player/:account', (req, res) => {
+//   try {
+//     const account = req.params.account;
+//     if (!account) return res.status(400).json({ error: 'account required' });
+//     const user = ensureUser(account);
+//     res.json({
+//       account: user.account,
+//       name: user.name,
+//       coins: user.coins,
+//       gems: user.gems,
+//       miner_level: user.miner_level
+//     });
+//   } catch (e) {
+//     console.error('player error', e);
+//     res.status(500).json({ error: e.message });
+//   }
+// });
+app.get('/player/:account', async (req, res) => {
   try {
     const account = req.params.account;
     if (!account) return res.status(400).json({ error: 'account required' });
+
     const user = ensureUser(account);
+
+    // 🔹 Fetch NFTs from AtomicAssets
+    const response = await fetch(`https://wax.api.atomicassets.io/atomicassets/v1/assets?collection_name=riskyblocks1&owner=${account}&limit=100`);
+    const data = await response.json();
+    const assets = data.data || [];
+
+    // 🔹 Template ranking and mining rate mapping
+    const rankMap = {
+      822690: { rank: 7, rate: 40 },
+      822688: { rank: 6, rate: 35 },
+      822687: { rank: 5, rate: 30 },
+      822686: { rank: 4, rate: 25 },
+      822685: { rank: 3, rate: 20 },
+      822684: { rank: 2, rate: 15 },
+      822385: { rank: 1, rate: 10 }
+    };
+
+    // 🔹 Find strongest NFT
+    let strongest = null;
+    for (const nft of assets) {
+      const tpl = parseInt(nft.template?.template_id);
+      const info = rankMap[tpl];
+      if (!info) continue;
+
+      const tierAttr = nft.data?.tier ? parseInt(nft.data.tier) || 0 : 0;
+
+      if (
+        !strongest ||
+        info.rank > strongest.rank ||
+        (info.rank === strongest.rank && tierAttr > strongest.tier)
+      ) {
+        strongest = {
+          nft,
+          rank: info.rank,
+          rate: info.rate,
+          tier: tierAttr
+        };
+      }
+    }
+
+    // 🔹 Set mining rate (default 1/sec if no NFT)
+    const miningRate = strongest ? strongest.rate : 1;
+
+    // 🔹 Return player info + NFT summary + mining rate
     res.json({
       account: user.account,
       name: user.name,
       coins: user.coins,
       gems: user.gems,
-      miner_level: user.miner_level
+      miner_level: user.miner_level,
+      mining_rate: miningRate,
+      strongest_nft: strongest
+        ? {
+            asset_id: strongest.nft.asset_id,
+            template_id: strongest.nft.template?.template_id,
+            name: strongest.nft.name,
+            img: strongest.nft.data?.img,
+            rank: strongest.rank,
+            tier: strongest.tier
+          }
+        : null
     });
+
   } catch (e) {
     console.error('player error', e);
     res.status(500).json({ error: e.message });
@@ -312,6 +386,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
