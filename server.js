@@ -147,31 +147,28 @@ app.get('/player/:account', async (req, res) => {
 
     // 🔹 Try multiple AtomicAssets endpoints
     const endpoints = [
-      'https://wax.api.atomicassets.io',
-      'https://atomic.wax.eosrio.io',
-      'https://aa-api-wax-mainnet.eosdac.io'
+      "https://wax.api.atomicassets.io",
+      "https://atomic.wax.eosrio.io",
+      "https://aa.dapplica.io"
     ];
 
     let assets = [];
     for (const base of endpoints) {
       try {
         const url = `${base}/atomicassets/v1/assets?collection_name=riskyblocks1&owner=${account}&limit=100`;
-        const resp = await fetch(url, { timeout: 8000 }); // 8 s timeout
-        if (!resp.ok) {
-          console.warn(`❌ ${base} returned ${resp.status}`);
-          continue;
-        }
-        const text = await resp.text();
+        const response = await fetch(url, { timeout: 8000 });
+        if (!response.ok) throw new Error(`${base} returned ${response.status}`);
+        const text = await response.text();
         const data = JSON.parse(text);
         assets = data.data || [];
         console.log(`✅ Using AtomicAssets endpoint: ${base}`);
-        break; // success → stop trying
+        break;
       } catch (err) {
         console.warn(`⚠️ Failed ${base}: ${err.message}`);
       }
     }
 
-    // 🔹 Template ranking and mining-rate map
+    // 🔹 Template ranking and mining rate mapping
     const rankMap = {
       822690: { rank: 7, rate: 40 },
       822688: { rank: 6, rate: 35 },
@@ -182,29 +179,55 @@ app.get('/player/:account', async (req, res) => {
       822385: { rank: 1, rate: 10 }
     };
 
-    // 🔹 Pick strongest NFT
+    // 🔹 Find strongest NFT
     let strongest = null;
-    for (const nft of assets) {
-      const tpl = parseInt(nft.template?.template_id);
-      const info = rankMap[tpl];
-      if (!info) continue;
+    if (Array.isArray(assets) && assets.length > 0) {
+      for (const nft of assets) {
+        const tpl = parseInt(nft.template?.template_id);
+        const info = rankMap[tpl];
+        if (!info) continue;
 
-      const tierAttr = nft.data?.tier ? parseInt(nft.data.tier) || 0 : 0;
-
-      if (
-        !strongest ||
-        info.rank > strongest.rank ||
-        (info.rank === strongest.rank && tierAttr > strongest.tier)
-      ) {
-        strongest = { nft, rank: info.rank, rate: info.rate, tier: tierAttr };
+        const tierAttr = nft.data?.tier ? parseInt(nft.data.tier) || 0 : 0;
+        if (
+          !strongest ||
+          info.rank > strongest.rank ||
+          (info.rank === strongest.rank && tierAttr > strongest.tier)
+        ) {
+          strongest = {
+            nft,
+            rank: info.rank,
+            rate: info.rate,
+            tier: tierAttr
+          };
+        }
       }
     }
 
-    // 🔹 Default to Basic Miner if none found
-    const miningRate = strongest ? strongest.rate : 1;
-    const miningCap = miningRate * 10; // cap = rate × 10
+    // 🔹 Determine mining stats
+    let miningRate, miningCap, nftInfo;
+    if (strongest) {
+      miningRate = strongest.rate;
+      miningCap = miningRate * 60 * 10; // same logic as frontend
+      nftInfo = {
+        asset_id: strongest.nft.asset_id,
+        template_id: strongest.nft.template?.template_id,
+        name: strongest.nft.name,
+        img: strongest.nft.data?.img,
+        rank: strongest.rank,
+        tier: strongest.tier
+      };
+    } else {
+      // 🔹 Default fallback
+      miningRate = 1;
+      miningCap = 1 * 60 * 10;
+      nftInfo = {
+        name: "Basic Miner",
+        rank: 0,
+        tier: 0,
+        rate: 1
+      };
+    }
 
-    // 🔹 Return player data
     res.json({
       account: user.account,
       name: user.name,
@@ -213,22 +236,15 @@ app.get('/player/:account', async (req, res) => {
       miner_level: user.miner_level,
       mining_rate: miningRate,
       mining_cap: miningCap,
-      strongest_nft: strongest
-        ? {
-            asset_id: strongest.nft.asset_id,
-            template_id: strongest.nft.template?.template_id,
-            name: strongest.nft.name,
-            img: strongest.nft.data?.img,
-            rank: strongest.rank,
-            tier: strongest.tier
-          }
-        : { name: 'Basic Miner', rank: 0, tier: 0, rate: 1 }
+      strongest_nft: nftInfo
     });
+
   } catch (e) {
-    console.error('player error', e);
+    console.error("player error", e);
     res.status(500).json({ error: e.message });
   }
 });
+
 // upgrade: cost = 5 + level gems
 app.post('/upgrade', (req, res) => {
   try {
@@ -402,6 +418,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
