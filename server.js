@@ -225,7 +225,12 @@ app.get('/pool/:account', (req, res) => {
     const approxShare = total > 0 ? ((userTotal / total) * POOL_GEMS).toFixed(2) : 0;
     // Auto-distribute last contribution's gems
     const last = db.prepare('SELECT day FROM submits WHERE account=? ORDER BY day DESC LIMIT 1').get(account);
-  if (last) distributeGemsForDay(last.day);
+    const today = yyyymmdd();
+    if (last && last.day < today) {
+      // only reward if their last submission was from a previous day
+      distributeGemsForDay(last.day);
+    }
+
 
     res.json({
       ok: true,
@@ -307,6 +312,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
