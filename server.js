@@ -186,6 +186,7 @@ app.get('/player/:account', async (req, res) => {
 
     // 🔹 Set mining rate (default 1/sec if no NFT)
     const miningRate = strongest ? strongest.rate : 1;
+    const miningCap = miningRate * 60 * 10; // per minute × 10 (same logic as frontend)
 
     // 🔹 Return player info + NFT summary + mining rate
     res.json({
@@ -195,6 +196,7 @@ app.get('/player/:account', async (req, res) => {
       gems: user.gems,
       miner_level: user.miner_level,
       mining_rate: miningRate,
+      mining_cap: miningCap,
       strongest_nft: strongest
         ? {
             asset_id: strongest.nft.asset_id,
@@ -204,7 +206,12 @@ app.get('/player/:account', async (req, res) => {
             rank: strongest.rank,
             tier: strongest.tier
           }
-        : null
+        : {
+            name: "Basic Miner",
+            rank: 0,
+            tier: 0,
+            rate: 1
+          }
     });
 
   } catch (e) {
@@ -212,6 +219,7 @@ app.get('/player/:account', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
 
 // upgrade: cost = 5 + level gems
 app.post('/upgrade', (req, res) => {
@@ -386,6 +394,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
