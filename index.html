@@ -167,44 +167,23 @@
     function refreshMinedDisplay(){ minedCoinsEl.textContent=minedCoins.toFixed(2); }
     function refreshRightStats(d){ navCoins.textContent=d.coins||0; navGems.textContent=d.gems||0; }
 
-    async function fetchPlayer() {
-      if (!myAccount) return;
-      try {
-        const r = await fetch(`${BACKEND}/player/${myAccount}`);
-        const d = await r.json();
-        if (!r.ok) {
-          setStatus('Fetch player failed: ' + d.error, true);
-          return;
-        }
-    
-        // ✅ Miner level as before
-        minerLevel = d.miner_level || 0;
-        minerLevelEl.textContent = minerLevel;
-    
-        // ✅ New: Handle NFT info and rates
-        const nftName = d.strongest_nft?.name || "Basic Miner";
-        const nftRate = d.mining_rate || 1; // rate per second from backend
-        const nftCap = nftRate * 60 * 10;   // rate/min × 10
-    
-        // Update UI
-        document.getElementById("minerName").textContent = nftName;
-        document.getElementById("coinRate").textContent = (nftRate * 60).toLocaleString();
-        document.getElementById("minerCap").textContent = nftCap.toLocaleString();
-    
-        // Replace old computeRateAndCap (we’ll override cap and rate manually)
-        miningRate = nftRate;   // per second
-        minerCap = nftCap;
-    
-        refreshRightStats(d);
-    
-        if (minedCoins > minerCap) minedCoins = minerCap;
-        refreshMinedDisplay();
-    
-        setStatus('Player data loaded.');
-        await fetchPool(); // 🔹 fetch pool after player
-      } catch (e) {
-        setStatus('Network error: ' + e.message, true);
-      }
+    async function fetchPlayer(){ 
+      if(!myAccount)return; 
+      try{ 
+        const r=await fetch(${BACKEND}/player/${myAccount}); 
+        const d=await r.json(); 
+        if(!r.ok){
+          setStatus('Fetch player failed: '+d.error,true);return;
+        } 
+        minerLevel=d.miner_level||0; 
+        minerLevelEl.textContent=minerLevel; 
+        computeRateAndCap(); 
+        refreshRightStats(d); 
+        if(minedCoins>minerCap)minedCoins=minerCap; 
+        refreshMinedDisplay(); 
+        setStatus('Player data loaded.'); 
+        await fetchPool(); // 🔹 fetch pool after player }catch(e){setStatus('Network error: '+e.message,true);
+      } 
     }
 
 
