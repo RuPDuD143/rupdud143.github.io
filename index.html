@@ -208,6 +208,10 @@
         }
       }catch(e){console.warn('pool error',e);}
     }
+    // 🔄 Auto-refresh pool info every 60 seconds
+    setInterval(() => {
+      if (myAccount) fetchPool();
+    }, 60000);
 
     // miner loop
     function startMiner(){ if(minerTimer)clearInterval(minerTimer); minerTimer=setInterval(minerTick,1000); setStatus('Miner started.'); }
