@@ -167,24 +167,28 @@
     function refreshMinedDisplay(){ minedCoinsEl.textContent=minedCoins.toFixed(2); }
     function refreshRightStats(d){ navCoins.textContent=d.coins||0; navGems.textContent=d.gems||0; }
 
-    async function fetchPlayer(){ 
-      if(!myAccount)return; 
-      try{ 
-        const r=await fetch(${BACKEND}/player/${myAccount}); 
-        const d=await r.json(); 
-        if(!r.ok){
-          setStatus('Fetch player failed: '+d.error,true);return;
-        } 
-        minerLevel=d.miner_level||0; 
-        minerLevelEl.textContent=minerLevel; 
-        computeRateAndCap(); 
-        refreshRightStats(d); 
-        if(minedCoins>minerCap)minedCoins=minerCap; 
-        refreshMinedDisplay(); 
-        setStatus('Player data loaded.'); 
-        await fetchPool(); // 🔹 fetch pool after player }catch(e){setStatus('Network error: '+e.message,true);
-      } 
+    async function fetchPlayer() { 
+    if (!myAccount) return; 
+    try { 
+      const r = await fetch(`${BACKEND}/player/${myAccount}`); 
+      const d = await r.json(); 
+      if (!r.ok) {
+        setStatus('Fetch player failed: ' + d.error, true);
+        return;
+      }
+      minerLevel = d.miner_level || 0; 
+      minerLevelEl.textContent = minerLevel; 
+      computeRateAndCap(); 
+      refreshRightStats(d); 
+      if (minedCoins > minerCap) minedCoins = minerCap; 
+      refreshMinedDisplay(); 
+      setStatus('Player data loaded.'); 
+      await fetchPool(); // 🔹 fetch pool after player 
+    } catch (e) { 
+      setStatus('Network error: ' + e.message, true); 
     }
+  }
+
 
 
     async function fetchPool(){
