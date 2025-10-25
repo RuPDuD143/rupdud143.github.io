@@ -146,9 +146,28 @@ app.get('/player/:account', async (req, res) => {
     const user = ensureUser(account);
 
     // 🔹 Fetch NFTs from AtomicAssets
-    const response = await fetch(`https://wax.api.atomicassets.io/atomicassets/v1/assets?collection_name=riskyblocks1&owner=${account}&limit=100`);
-    const data = await response.json();
-    const assets = data.data || [];
+    let assets = [];
+    try {
+      const response = await fetch(
+        `https://wax.api.atomicassets.io/atomicassets/v1/assets?collection_name=riskyblocks1&owner=${account}&limit=100`
+      );
+    
+      if (!response.ok) throw new Error(`AtomicAssets returned ${response.status}`);
+    
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error("Invalid JSON from AtomicAssets");
+      }
+    
+      assets = data.data || [];
+    } catch (err) {
+      console.warn("AtomicAssets fetch failed:", err.message);
+      assets = [];
+    }
+
 
     // 🔹 Template ranking and mining rate mapping
     const rankMap = {
@@ -394,6 +413,7 @@ app.get('/admin/day/:day/submits', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Miner Game server listening on ${PORT}`);
 });
+
 
 
 
