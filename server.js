@@ -36,11 +36,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// server.js (continuation)
 const ATOMIC_API = 'https://wax.api.atomicassets.io/atomicassets/v1/assets';
 
-// --- Example POST route ---
-// Body should contain { account: "mycloudwallet" }
 app.post('/get-nfts', async (req, res) => {
   try {
     const { account } = req.body;
@@ -50,22 +47,25 @@ app.post('/get-nfts', async (req, res) => {
     const response = await fetch(url);
     const data = await response.json();
 
-    // Print to console for testing
-    console.log(`NFTs for ${account}:`, JSON.stringify(data.data, null, 2));
+    console.log(`NFTs for ${account}:`);
+    console.log(JSON.stringify(data.data, null, 2));
 
-    res.json(data);
+    res.json({
+      account,
+      total: data.data.length,
+      nfts: data.data.map(nft => ({
+        name: nft.name,
+        template_id: nft.template?.template_id,
+        img: nft.data?.img,
+      })),
+    });
   } catch (err) {
     console.error('Error fetching NFTs:', err);
     res.status(500).json({ error: 'Failed to fetch NFTs' });
   }
 });
 
-// optional simple test route
-app.get('/', (req, res) => {
-  res.send('Miner Backend is running');
-});
-
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Miner backend running on port ${PORT}`));
 
 
 
