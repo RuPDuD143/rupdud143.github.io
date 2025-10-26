@@ -33,11 +33,29 @@ const api = signatureProvider
 
 const app = express();
 app.use(express.json());
+// ✅ Allow CORS for GitHub Pages + local dev
 app.use(cors({
-  origin: FRONTEND_ORIGINS,
-  methods: ['GET', 'POST'],
+  origin: [
+    'https://rupdud143.github.io',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: false
+}));
+
+// ✅ Respond properly to preflight requests
+app.options('*', cors({
+  origin: [
+    'https://rupdud143.github.io',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
+
 
 // 🛡️ Optional rate limit: max 20 NFT calls per minute per IP
 app.use('/get-nfts', rateLimit({
@@ -110,3 +128,4 @@ app.post('/get-nfts', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+
