@@ -3,32 +3,60 @@
 <head>
   <meta charset="utf-8">
   <title>MyCloudWallet NFT Test</title>
-  <!-- Load the MyCloudWallet SDK -->
-  <script src="https://mycloudwallet.com/v1/mycloudwallet.js"></script>
+  <!-- Optional: load MyCloudWallet SDK, but waxjs is enough -->
+  <script src="./waxjs.js"></script>
 </head>
 <body style="font-family:sans-serif;text-align:center;margin-top:100px;background:#111;color:#fff;">
   <h1>MyCloudWallet NFT Fetch Test</h1>
   <button id="loginBtn" style="padding:10px 20px;">Login with MyCloudWallet</button>
   <pre id="output"></pre>
 
-  <button id="loginBtn">Login with MyCloudWallet</button>
-  <p id="output"></p>
-  
-  <script src="./waxjs.js"></script>
   <script>
-  const wax = new waxjs.WaxJS({
-    rpcEndpoint: 'https://wax.greymass.com'
-  });
-  
-  document.getElementById('loginBtn').onclick = async () => {
-    try {
-      const userAccount = await wax.login();
-      console.log('✅ Logged in as:', userAccount);
-      document.getElementById('output').textContent = `Logged in as: ${userAccount}`;
-    } catch (err) {
-      console.error('❌ Login failed:', err);
+    // 🔧 Change this to your Render backend URL
+    const backendURL = 'https://your-backend-name.onrender.com/get-nfts';
+    const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
+
+    async function getNFTs(account) {
+      try {
+        const res = await fetch(backendURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          document.getElementById('output').textContent = `Error: ${data.error}`;
+          return;
+        }
+
+        // 🖼️ Display NFT data
+        let html = `Account: ${data.account}\nTotal NFTs: ${data.total}\n\n`;
+        for (const nft of data.nfts) {
+          html += `${nft.name || 'Untitled NFT'} — Template: ${nft.template_id}\n`;
+          if (nft.img) {
+            const imgUrl = `https://ipfs.io/ipfs/${nft.img}`;
+            html += `Image: ${imgUrl}\n\n`;
+          }
+        }
+        document.getElementById('output').textContent = html;
+      } catch (err) {
+        console.error('❌ Error fetching NFTs:', err);
+        document.getElementById('output').textContent = 'Failed to fetch NFTs.';
+      }
     }
-  };
+
+    document.getElementById('loginBtn').onclick = async () => {
+      try {
+        const userAccount = await wax.login();
+        console.log('✅ Logged in as:', userAccount);
+        document.getElementById('output').textContent = `Logged in as: ${userAccount}\nFetching NFTs...`;
+        await getNFTs(userAccount);
+      } catch (err) {
+        console.error('❌ Login failed:', err);
+        document.getElementById('output').textContent = 'Login failed.';
+      }
+    };
   </script>
 </body>
 </html>
