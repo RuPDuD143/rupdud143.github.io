@@ -34,7 +34,16 @@ const api = signatureProvider ? new Api({
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://rupdud143.github.io', // ✅ your GitHub Pages
+    'http://localhost:3000',       // for local dev
+    'http://127.0.0.1:3000'
+  ],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 
 const ATOMIC_API = 'https://wax.api.atomicassets.io/atomicassets/v1/assets';
 
@@ -66,16 +75,4 @@ app.post('/get-nfts', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Miner backend running on port ${PORT}`));
-
-
-
-
-
-
-
-
-
-
-
-
 
