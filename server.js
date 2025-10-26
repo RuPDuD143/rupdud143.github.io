@@ -43,16 +43,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type'],
 }));
 
-// ✅ Express 5-safe CORS preflight handler
-app.options('/*', cors({
-  origin: [
-    'https://rupdud143.github.io',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-}));
 
 
 
