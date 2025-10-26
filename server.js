@@ -53,8 +53,21 @@ app.post('/get-nfts', async (req, res) => {
     if (!account) return res.status(400).json({ error: 'Missing account' });
 
     const url = `${ATOMIC_API}?owner=${account}&collection_name=riskyblocks1&limit=100`;
-    const response = await fetch(url);
-    const data = await response.json();
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'MyCloudWallet-NFT-Backend/1.0 (+https://rupdud143.github.io)'
+      }
+    });
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error('❌ Non-JSON response from AtomicAssets:', text.slice(0, 200));
+      return res.status(502).json({ error: 'Invalid response from AtomicAssets API' });
+    }
 
     console.log(`NFTs for ${account}:`);
     console.log(JSON.stringify(data.data, null, 2));
@@ -74,5 +87,7 @@ app.post('/get-nfts', async (req, res) => {
   }
 });
 
+
 app.listen(PORT, () => console.log(`✅ Miner backend running on port ${PORT}`));
+
 
