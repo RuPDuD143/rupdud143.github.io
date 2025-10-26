@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <title>MyCloudWallet NFT Test</title>
+  <!-- Load the MyCloudWallet SDK -->
+  <script src="https://mycloudwallet.com/v1/mycloudwallet.js"></script>
 </head>
 <body style="font-family:sans-serif;text-align:center;margin-top:100px;background:#111;color:#fff;">
   <h1>MyCloudWallet NFT Fetch Test</h1>
@@ -10,6 +12,8 @@
   <pre id="output"></pre>
 
   <script>
+    // Change this if backend is on Render:
+    // const backendURL = 'https://rupdud143backend.onrender.com/get-nfts';
     const backendURL = 'http://localhost:3000/get-nfts';
 
     async function getNFTs(account) {
@@ -24,9 +28,23 @@
     }
 
     document.getElementById('loginBtn').onclick = async () => {
-      // Replace with actual MyCloudWallet login if available
-      const account = prompt('Enter your MyCloudWallet username (e.g., mycloudwallet1):');
-      if (account) await getNFTs(account);
+      try {
+        // ✅ Initialize MyCloudWallet SDK
+        const mcw = new MyCloudWallet();
+
+        // ✅ Open official login popup
+        const user = await mcw.login();
+
+        // user = { account: "mycloudwallet1", permission: "active", publicKey: "EOS..." }
+        console.log('✅ Logged in as:', user);
+        document.getElementById('output').textContent = `Logged in as: ${user.account}`;
+
+        // ✅ Fetch NFTs for that user
+        await getNFTs(user.account);
+      } catch (err) {
+        console.error('Login failed:', err);
+        alert('Login failed or cancelled.');
+      }
     };
   </script>
 </body>
