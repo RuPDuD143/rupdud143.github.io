@@ -110,54 +110,60 @@
     const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
 
     async function getNFTs(account) {
-      try {
-        const res = await fetch(backendURL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account })
-        });
-        const data = await res.json();
+  try {
+    const res = await fetch(backendURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account })
+    });
+    const data = await res.json();
 
-        if (data.error) {
-          document.getElementById('output').textContent = `Error: ${data.error}`;
-          return;
-        }
-
-        // 🖼️ Show gallery
-        document.getElementById('output').textContent = 
-          `Account: ${data.account} | Total NFTs: ${data.total}`;
-
-        const gallery = document.getElementById('gallery');
-        gallery.innerHTML = ''; // clear old results
-
-        if (!data.nfts || data.nfts.length === 0) {
-          gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
-          return;
-        }
-
-        for (const nft of data.nfts) {
-          const imgUrl = nft.img
-            ? `https://ipfs.io/ipfs/${nft.img}`
-            : 'https://via.placeholder.com/300x300?text=No+Image';
-
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <img src="${imgUrl}" alt="${nft.name || 'NFT'}">
-            <div class="card-info">
-              <h3>${nft.name || 'Untitled NFT'}</h3>
-              <p>Template ID: ${nft.template_id || 'N/A'}</p>
-            </div>
-          `;
-          gallery.appendChild(card);
-        }
-
-      } catch (err) {
-        console.error('❌ Error fetching NFTs:', err);
-        document.getElementById('output').textContent = 'Failed to fetch NFTs.';
-      }
+    if (data.error) {
+      document.getElementById('output').textContent = `Error: ${data.error}`;
+      return;
     }
 
+    document.getElementById('output').textContent =
+      `Account: ${data.account} | Total NFTs: ${data.total}`;
+
+    const gallery = document.getElementById('gallery');
+    gallery.innerHTML = '';
+
+    if (!data.nfts || data.nfts.length === 0) {
+      gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
+      return;
+    }
+
+    for (const nft of data.nfts) {
+      // 🧠 Try multiple possible IPFS image fields
+      const imgHash =
+        nft.img ||
+        nft.data?.img ||
+        nft.data?.image ||
+        nft.template?.immutable_data?.img ||
+        nft.template?.immutable_data?.image;
+
+      // Use a reliable WAX IPFS gateway
+      const imgUrl = imgHash
+        ? `https://ipfs.atomichub.io/ipfs/${imgHash}`
+        : 'https://via.placeholder.com/300x300?text=No+Image';
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <img src="${imgUrl}" alt="${nft.name || 'NFT'}">
+        <div class="card-info">
+          <h3>${nft.name || 'Untitled NFT'}</h3>
+          <p>Template ID: ${nft.template_id || 'N/A'}</p>
+        </div>
+      `;
+      gallery.appendChild(card);
+    }
+  } catch (err) {
+    console.error('❌ Error fetching NFTs:', err);
+    document.getElementById('output').textContent = 'Failed to fetch NFTs.';
+  }
+    }
     document.getElementById('loginBtn').onclick = async () => {
       try {
         const userAccount = await wax.login();
