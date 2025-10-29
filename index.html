@@ -109,59 +109,71 @@
     const backendURL = 'https://rupdud143backend.onrender.com/get-nfts';
     const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
 
+    // 🧠 Helper: fix IPFS URLs no matter the format
+    function resolveIpfsUrl(ipfsPath) {
+      if (!ipfsPath) return '';
+      if (ipfsPath.startsWith('http')) return ipfsPath;
+      if (ipfsPath.startsWith('ipfs://')) {
+        return ipfsPath.replace('ipfs://', 'https://ipfs.neftyblocks.io/ipfs/');
+      }
+      return `https://ipfs.neftyblocks.io/ipfs/${ipfsPath}`;
+    }
+
     async function getNFTs(account) {
-  try {
-    const res = await fetch(backendURL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ account })
-    });
-    const data = await res.json();
+      try {
+        const res = await fetch(backendURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account })
+        });
+        const data = await res.json();
 
-    if (data.error) {
-      document.getElementById('output').textContent = `Error: ${data.error}`;
-      return;
+        if (data.error) {
+          document.getElementById('output').textContent = `Error: ${data.error}`;
+          return;
+        }
+
+        document.getElementById('output').textContent =
+          `Account: ${data.account} | Total NFTs: ${data.total}`;
+
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = '';
+
+        if (!data.nfts || data.nfts.length === 0) {
+          gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
+          return;
+        }
+
+        for (const nft of data.nfts) {
+          // 🧩 Fix missing IPFS images
+          const imgHash = nft.img || nft.image || nft.data?.img || nft.data?.image;
+          const imgUrl = resolveIpfsUrl(imgHash);
+
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <img src="${imgUrl}" alt="${nft.name || 'NFT'}"
+                 onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'; this.onerror=null;">
+            <div class="card-info">
+              <h3>${nft.name || 'Untitled NFT'}</h3>
+              ${nft.type ? `<p><strong>Type:</strong> ${nft.type}</p>` : ''}
+              ${nft.tier ? `<p><strong>Tier:</strong> ${nft.tier}</p>` : ''}
+              <p>Template ID: ${nft.template_id || 'N/A'}</p>
+            </div>
+          `;
+          gallery.appendChild(card);
+        }
+      } catch (err) {
+        console.error('❌ Error fetching NFTs:', err);
+        document.getElementById('output').textContent = 'Failed to fetch NFTs.';
+      }
     }
 
-    document.getElementById('output').textContent =
-      `Account: ${data.account} | Total NFTs: ${data.total}`;
-
-    const gallery = document.getElementById('gallery');
-    gallery.innerHTML = '';
-
-    if (!data.nfts || data.nfts.length === 0) {
-      gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
-      return;
-    }
-
-    for (const nft of data.nfts) {
-      // 🧠 Try multiple possible IPFS image fields
-      const imgHash = nft.image;
-
-      // Use a reliable WAX IPFS gateway
-      const imgUrl =`https://ipfs.neftyblocks.io/ipfs/${imgHash}`;
-
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = `
-        <img src="${imgUrl}" alt="${nft.name || 'NFT'}">
-        <div class="card-info">
-          <h3>${nft.name || 'Untitled NFT'}</h3>
-          <p>Template ID: ${nft.template_id || 'N/A'}</p>
-        </div>
-      `;
-      gallery.appendChild(card);
-    }
-  } catch (err) {
-    console.error('❌ Error fetching NFTs:', err);
-    document.getElementById('output').textContent = 'Failed to fetch NFTs.';
-  }
-    }
     document.getElementById('loginBtn').onclick = async () => {
       try {
         const userAccount = await wax.login();
         console.log('✅ Logged in as:', userAccount);
-        document.getElementById('output').textContent = 
+        document.getElementById('output').textContent =
           `Logged in as: ${userAccount}\nFetching NFTs...`;
         await getNFTs(userAccount);
       } catch (err) {
