@@ -95,7 +95,7 @@ app.post('/get-nfts', async (req, res) => {
     const { account } = req.body;
     if (!account) return res.status(400).json({ error: 'Missing account' });
 
-    const path = `?owner=${account}&collection_name=riskyblocks1&limit=100`;
+    const path = `?owner=${account}&collection_name=brostreasure&schema_name=materials&limit=100`;
     const data = await fetchAtomicAssets(path);
 
     if (!data || !data.data)
@@ -117,5 +117,6 @@ app.post('/get-nfts', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+
 
 
