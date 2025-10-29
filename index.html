@@ -136,17 +136,10 @@
 
     for (const nft of data.nfts) {
       // 🧠 Try multiple possible IPFS image fields
-      const imgHash =
-        nft.image ||
-        nft.data?.img ||
-        nft.data?.image ||
-        nft.template?.immutable_data?.img ||
-        nft.template?.immutable_data?.image;
+      const imgHash = nft.image;
 
       // Use a reliable WAX IPFS gateway
-      const imgUrl = imgHash
-        ? `https://ipfs.neftyblocks.io/ipfs/${imgHash}`
-        : 'https://via.placeholder.com/300x300?text=No+Image';
+      const imgUrl =`https://ipfs.neftyblocks.io/ipfs/${imgHash}`;
 
       const card = document.createElement('div');
       card.className = 'card';
