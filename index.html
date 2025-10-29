@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>MyCloudWallet NFT Gallery</title>
+  <title>MyCloudWallet NFT Gallery — Debug</title>
   <script src="./waxjs.js"></script>
   <style>
     body {
@@ -88,6 +88,19 @@
       color: #ccc;
     }
 
+    pre.json {
+      text-align: left;
+      background: #222;
+      color: #bbb;
+      font-size: 0.8rem;
+      padding: 10px;
+      margin: 0;
+      border-top: 1px solid #333;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 0 0 12px 12px;
+    }
+
     #output {
       white-space: pre-wrap;
       color: #bbb;
@@ -98,7 +111,7 @@
 </head>
 <body>
   <header>
-    <h1>MyCloudWallet NFT Gallery</h1>
+    <h1>MyCloudWallet NFT Gallery (Debug)</h1>
     <button id="loginBtn">Login with MyCloudWallet</button>
   </header>
 
@@ -109,7 +122,6 @@
     const backendURL = 'https://rupdud143backend.onrender.com/get-nfts';
     const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
 
-    // 🧠 Helper: fix IPFS URLs no matter the format
     function resolveIpfsUrl(ipfsPath) {
       if (!ipfsPath) return '';
       if (ipfsPath.startsWith('http')) return ipfsPath;
@@ -145,8 +157,18 @@
         }
 
         for (const nft of data.nfts) {
-          // 🧩 Fix missing IPFS images
-          const imgHash = nft.img || nft.image || nft.data?.img || nft.data?.image;
+          // 🧩 Try to find the image hash in multiple locations
+          const imgHash =
+            nft.img ||
+            nft.image ||
+            nft.data?.img ||
+            nft.data?.image ||
+            nft.data?.image_url ||
+            nft.immutable_data?.img ||
+            nft.immutable_data?.image ||
+            nft.template?.immutable_data?.img ||
+            nft.template?.immutable_data?.image;
+
           const imgUrl = resolveIpfsUrl(imgHash);
 
           const card = document.createElement('div');
@@ -160,6 +182,7 @@
               ${nft.tier ? `<p><strong>Tier:</strong> ${nft.tier}</p>` : ''}
               <p>Template ID: ${nft.template_id || 'N/A'}</p>
             </div>
+            <pre class="json">${JSON.stringify(nft, null, 2)}</pre>
           `;
           gallery.appendChild(card);
         }
@@ -172,12 +195,10 @@
     document.getElementById('loginBtn').onclick = async () => {
       try {
         const userAccount = await wax.login();
-        console.log('✅ Logged in as:', userAccount);
         document.getElementById('output').textContent =
           `Logged in as: ${userAccount}\nFetching NFTs...`;
         await getNFTs(userAccount);
       } catch (err) {
-        console.error('❌ Login failed:', err);
         document.getElementById('output').textContent = 'Login failed.';
       }
     };
