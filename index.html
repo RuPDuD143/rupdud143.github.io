@@ -2,17 +2,110 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>MyCloudWallet NFT Test</title>
-  <!-- Optional: load MyCloudWallet SDK, but waxjs is enough -->
+  <title>MyCloudWallet NFT Gallery</title>
   <script src="./waxjs.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #0b0b0b;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    header {
+      background: #111;
+      padding: 20px;
+      border-bottom: 2px solid #ff9900;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: #ff9900;
+    }
+
+    button {
+      background: #ff9900;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #000;
+      font-weight: bold;
+      margin-top: 15px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #ffaa33;
+    }
+
+    #gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+      padding: 30px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #181818;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(255, 153, 0, 0.2);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 20px rgba(255, 153, 0, 0.4);
+    }
+
+    .card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      border-bottom: 1px solid #333;
+    }
+
+    .card-info {
+      padding: 10px;
+    }
+
+    .card-info h3 {
+      margin: 8px 0 4px;
+      font-size: 1.1rem;
+      color: #ff9900;
+    }
+
+    .card-info p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+
+    #output {
+      white-space: pre-wrap;
+      color: #bbb;
+      font-size: 0.9rem;
+      margin-top: 20px;
+    }
+  </style>
 </head>
-<body style="font-family:sans-serif;text-align:center;margin-top:100px;background:#111;color:#fff;">
-  <h1>MyCloudWallet NFT Fetch Test</h1>
-  <button id="loginBtn" style="padding:10px 20px;">Login with MyCloudWallet</button>
-  <pre id="output"></pre>
+<body>
+  <header>
+    <h1>MyCloudWallet NFT Gallery</h1>
+    <button id="loginBtn">Login with MyCloudWallet</button>
+  </header>
+
+  <div id="output"></div>
+  <div id="gallery"></div>
 
   <script>
-    // 🔧 Change this to your Render backend URL
     const backendURL = 'https://rupdud143backend.onrender.com/get-nfts';
     const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
 
@@ -30,16 +123,35 @@
           return;
         }
 
-        // 🖼️ Display NFT data
-        let html = `Account: ${data.account}\nTotal NFTs: ${data.total}\n\n`;
-        for (const nft of data.nfts) {
-          html += `${nft.name || 'Untitled NFT'} — Template: ${nft.template_id}\n`;
-          if (nft.img) {
-            const imgUrl = `https://ipfs.io/ipfs/${nft.img}`;
-            html += `Image: ${imgUrl}\n\n`;
-          }
+        // 🖼️ Show gallery
+        document.getElementById('output').textContent = 
+          `Account: ${data.account} | Total NFTs: ${data.total}`;
+
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = ''; // clear old results
+
+        if (!data.nfts || data.nfts.length === 0) {
+          gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
+          return;
         }
-        document.getElementById('output').textContent = html;
+
+        for (const nft of data.nfts) {
+          const imgUrl = nft.img
+            ? `https://ipfs.io/ipfs/${nft.img}`
+            : 'https://via.placeholder.com/300x300?text=No+Image';
+
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <img src="${imgUrl}" alt="${nft.name || 'NFT'}">
+            <div class="card-info">
+              <h3>${nft.name || 'Untitled NFT'}</h3>
+              <p>Template ID: ${nft.template_id || 'N/A'}</p>
+            </div>
+          `;
+          gallery.appendChild(card);
+        }
+
       } catch (err) {
         console.error('❌ Error fetching NFTs:', err);
         document.getElementById('output').textContent = 'Failed to fetch NFTs.';
@@ -50,7 +162,8 @@
       try {
         const userAccount = await wax.login();
         console.log('✅ Logged in as:', userAccount);
-        document.getElementById('output').textContent = `Logged in as: ${userAccount}\nFetching NFTs...`;
+        document.getElementById('output').textContent = 
+          `Logged in as: ${userAccount}\nFetching NFTs...`;
         await getNFTs(userAccount);
       } catch (err) {
         console.error('❌ Login failed:', err);
