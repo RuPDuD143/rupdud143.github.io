@@ -84,7 +84,6 @@
       border-bottom: 1px solid #222;
       height: 10%;
       min-height: 80px;
-      cursor: pointer;
       transition: background 0.2s;
     }
 
@@ -107,18 +106,6 @@
       flex: 1;
       text-align: left;
     }
-
-    pre.json {
-      text-align: left;
-      background: #222;
-      color: #bbb;
-      font-size: 0.8rem;
-      padding: 10px;
-      border-radius: 8px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
@@ -130,7 +117,6 @@
   <main>
     <div id="leftPanel">
       <div id="output"></div>
-      <div id="templateTable"></div>
     </div>
     <div id="gallery"></div>
   </main>
@@ -172,34 +158,8 @@
           gallery.innerHTML = '<p style="padding:10px;">No NFTs found for this collection.</p>';
           return;
         }
-    
-        // Unique template IDs
-        const templateIds = [...new Set(
-          data.nfts.map(nft => nft.template_id).filter(Boolean)
-        )];
-    
-        const tableContainer = document.getElementById('templateTable');
-        tableContainer.innerHTML = `
-          <h3>Unique Template IDs (${templateIds.length})</h3>
-          <table style="width:100%;border-collapse:collapse;background:#111;color:#fff;border-radius:8px;overflow:hidden;">
-            <thead>
-              <tr style="background:#ff9900;color:#000;">
-                <th style="padding:8px;border-bottom:1px solid #333;">#</th>
-                <th style="padding:8px;border-bottom:1px solid #333;">Template ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${templateIds.map((id, i) => `
-                <tr>
-                  <td style="padding:6px 8px;border-bottom:1px solid #333;">${i + 1}</td>
-                  <td style="padding:6px 8px;border-bottom:1px solid #333;">${id}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `;
-    
-        // NFT rows
+
+        // Display NFT rows (non-clickable)
         for (const nft of data.nfts) {
           const imgHash =
             nft.img ||
@@ -221,13 +181,6 @@
                  onerror="this.src='https://via.placeholder.com/64x64?text=No+Image'; this.onerror=null;">
             <span>${nft.name || 'Untitled NFT'}</span>
           `;
-          row.onclick = () => {
-            const info = document.createElement('pre');
-            info.className = 'json';
-            info.textContent = JSON.stringify(nft, null, 2);
-            document.getElementById('leftPanel').appendChild(info);
-            info.scrollIntoView({ behavior: 'smooth' });
-          };
           gallery.appendChild(row);
         }
       } catch (err) {
