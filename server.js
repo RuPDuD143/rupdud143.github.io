@@ -107,8 +107,23 @@ app.post('/get-nfts', async (req, res) => {
       nfts: data.data.map(nft => ({
         name: nft.name,
         template_id: nft.template?.template_id,
-        img: nft.image,
-      }))
+        img:
+          nft.image ||
+          nft.data?.img ||
+          nft.data?.image ||
+          nft.immutable_data?.img ||
+          nft.immutable_data?.image ||
+          nft.template?.immutable_data?.img ||
+          nft.template?.immutable_data?.image,
+        type:
+          nft.data?.type ||
+          nft.immutable_data?.type ||
+          nft.template?.immutable_data?.type,
+        tier:
+          nft.data?.tier ||
+          nft.immutable_data?.tier ||
+          nft.template?.immutable_data?.tier,
+      })),
     });
   } catch (err) {
     console.error('Error fetching NFTs:', err);
@@ -117,6 +132,7 @@ app.post('/get-nfts', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+
 
 
 
