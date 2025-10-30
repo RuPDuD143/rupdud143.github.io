@@ -8,33 +8,6 @@
         "name": "Steam",
         "template_id": 901095
       }
-    },
-    {
-      "id": "mud",
-      "name": "Mud",
-      "ingredients": ["water", "earth"],
-      "result": {
-        "name": "Mud",
-        "template_id": 901054
-      }
-    },
-    {
-      "id": "dust",
-      "name": "Dust",
-      "ingredients": ["air", "earth"],
-      "result": {
-        "name": "Dust",
-        "template_id": 901055
-      }
-    },
-    {
-      "id": "energy",
-      "name": "Energy",
-      "ingredients": ["fire", "air"],
-      "result": {
-        "name": "Energy",
-        "template_id": 901056
-      }
     }
   ]
 }
