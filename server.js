@@ -107,7 +107,7 @@ app.post('/get-nfts', async (req, res) => {
       nfts: data.data.map(nft => ({
         name: nft.name,
         template_id: nft.template?.template_id,
-        img: nft.data?.img,
+        img: nft.image,
       }))
     });
   } catch (err) {
@@ -117,6 +117,7 @@ app.post('/get-nfts', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+
 
 
 
