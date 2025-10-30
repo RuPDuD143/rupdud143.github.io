@@ -139,25 +139,66 @@
           body: JSON.stringify({ account })
         });
         const data = await res.json();
-
+    
         if (data.error) {
           document.getElementById('output').textContent = `Error: ${data.error}`;
           return;
         }
-
+    
         document.getElementById('output').textContent =
           `Account: ${data.account} | Total NFTs: ${data.total}`;
-
+    
         const gallery = document.getElementById('gallery');
         gallery.innerHTML = '';
-
+    
         if (!data.nfts || data.nfts.length === 0) {
           gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
           return;
         }
-
+    
+        // ✅ Collect unique template IDs
+        const templateIds = [...new Set(
+          data.nfts.map(nft => nft.template_id).filter(Boolean)
+        )];
+    
+        // ✅ Create and display a table of template IDs
+        const tableContainer = document.createElement('div');
+        tableContainer.style.margin = '20px auto';
+        tableContainer.style.maxWidth = '600px';
+        tableContainer.style.textAlign = 'left';
+        tableContainer.innerHTML = `
+          <h3>Unique Template IDs (${templateIds.length})</h3>
+          <table style="
+            width: 100%;
+            border-collapse: collapse;
+            background: #111;
+            color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+          ">
+            <thead>
+              <tr style="background: #ff9900; color: #000;">
+                <th style="padding: 8px; border-bottom: 1px solid #333;">#</th>
+                <th style="padding: 8px; border-bottom: 1px solid #333;">Template ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${templateIds.map((id, index) => `
+                <tr>
+                  <td style="padding: 6px 8px; border-bottom: 1px solid #333;">${index + 1}</td>
+                  <td style="padding: 6px 8px; border-bottom: 1px solid #333;">${id}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+    
+        // Insert table right after the output section
+        const output = document.getElementById('output');
+        output.insertAdjacentElement('afterend', tableContainer);
+    
+        // ✅ Render NFT cards
         for (const nft of data.nfts) {
-          // 🧩 Try to find the image hash in multiple locations
           const imgHash =
             nft.img ||
             nft.image ||
@@ -168,9 +209,9 @@
             nft.immutable_data?.image ||
             nft.template?.immutable_data?.img ||
             nft.template?.immutable_data?.image;
-
+    
           const imgUrl = resolveIpfsUrl(imgHash);
-
+    
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
@@ -178,9 +219,6 @@
                  onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'; this.onerror=null;">
             <div class="card-info">
               <h3>${nft.name || 'Untitled NFT'}</h3>
-              ${nft.type ? `<p><strong>Type:</strong> ${nft.type}</p>` : ''}
-              ${nft.tier ? `<p><strong>Tier:</strong> ${nft.tier}</p>` : ''}
-              <p>Template ID: ${nft.template_id || 'N/A'}</p>
             </div>
             <pre class="json">${JSON.stringify(nft, null, 2)}</pre>
           `;
@@ -191,6 +229,7 @@
         document.getElementById('output').textContent = 'Failed to fetch NFTs.';
       }
     }
+
 
     document.getElementById('loginBtn').onclick = async () => {
       try {
