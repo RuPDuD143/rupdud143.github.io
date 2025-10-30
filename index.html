@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>MyCloudWallet NFT Gallery — Debug</title>
+  <title>MyCloudWallet NFT Gallery — Debug (List View)</title>
   <script src="./waxjs.js"></script>
   <style>
     body {
@@ -11,13 +11,18 @@
       color: #fff;
       margin: 0;
       padding: 0;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
 
     header {
       background: #111;
       padding: 20px;
       border-bottom: 2px solid #ff9900;
+      flex-shrink: 0;
+      text-align: center;
     }
 
     h1 {
@@ -43,49 +48,64 @@
       background: #ffaa33;
     }
 
-    #gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 20px;
-      padding: 30px;
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-
-    .card {
-      background: #181818;
-      border-radius: 12px;
-      box-shadow: 0 0 12px rgba(255, 153, 0, 0.2);
+    main {
+      display: flex;
+      flex: 1;
       overflow: hidden;
-      transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 0 20px rgba(255, 153, 0, 0.4);
+    #leftPanel {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
     }
 
-    .card img {
-      width: 100%;
-      height: 220px;
-      object-fit: cover;
-      border-bottom: 1px solid #333;
-    }
-
-    .card-info {
-      padding: 10px;
-    }
-
-    .card-info h3 {
-      margin: 8px 0 4px;
-      font-size: 1.1rem;
-      color: #ff9900;
-    }
-
-    .card-info p {
-      margin: 0;
+    #output {
+      white-space: pre-wrap;
+      color: #bbb;
       font-size: 0.9rem;
-      color: #ccc;
+      margin-bottom: 20px;
+    }
+
+    #gallery {
+      width: 25%;
+      height: 100%;
+      overflow-y: auto;
+      background: #111;
+      border-left: 2px solid #ff9900;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nft-row {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #222;
+      height: 10%;
+      min-height: 80px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .nft-row:hover {
+      background: #1a1a1a;
+    }
+
+    .nft-row img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-right: 12px;
+      border: 1px solid #333;
+    }
+
+    .nft-row span {
+      font-size: 0.95rem;
+      color: #fff;
+      flex: 1;
+      text-align: left;
     }
 
     pre.json {
@@ -94,29 +114,26 @@
       color: #bbb;
       font-size: 0.8rem;
       padding: 10px;
-      margin: 0;
-      border-top: 1px solid #333;
+      border-radius: 8px;
       white-space: pre-wrap;
       word-break: break-word;
-      border-radius: 0 0 12px 12px;
-    }
-
-    #output {
-      white-space: pre-wrap;
-      color: #bbb;
-      font-size: 0.9rem;
-      margin-top: 20px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>MyCloudWallet NFT Gallery (Debug)</h1>
+    <h1>MyCloudWallet NFT Gallery (List View)</h1>
     <button id="loginBtn">Login with MyCloudWallet</button>
   </header>
 
-  <div id="output"></div>
-  <div id="gallery"></div>
+  <main>
+    <div id="leftPanel">
+      <div id="output"></div>
+      <div id="templateTable"></div>
+    </div>
+    <div id="gallery"></div>
+  </main>
 
   <script>
     const backendURL = 'https://rupdud143backend.onrender.com/get-nfts';
@@ -152,52 +169,37 @@
         gallery.innerHTML = '';
     
         if (!data.nfts || data.nfts.length === 0) {
-          gallery.innerHTML = '<p>No NFTs found for this collection.</p>';
+          gallery.innerHTML = '<p style="padding:10px;">No NFTs found for this collection.</p>';
           return;
         }
     
-        // ✅ Collect unique template IDs
+        // Unique template IDs
         const templateIds = [...new Set(
           data.nfts.map(nft => nft.template_id).filter(Boolean)
         )];
     
-        // ✅ Create and display a table of template IDs
-        const tableContainer = document.createElement('div');
-        tableContainer.style.margin = '20px auto';
-        tableContainer.style.maxWidth = '600px';
-        tableContainer.style.textAlign = 'left';
+        const tableContainer = document.getElementById('templateTable');
         tableContainer.innerHTML = `
           <h3>Unique Template IDs (${templateIds.length})</h3>
-          <table style="
-            width: 100%;
-            border-collapse: collapse;
-            background: #111;
-            color: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-          ">
+          <table style="width:100%;border-collapse:collapse;background:#111;color:#fff;border-radius:8px;overflow:hidden;">
             <thead>
-              <tr style="background: #ff9900; color: #000;">
-                <th style="padding: 8px; border-bottom: 1px solid #333;">#</th>
-                <th style="padding: 8px; border-bottom: 1px solid #333;">Template ID</th>
+              <tr style="background:#ff9900;color:#000;">
+                <th style="padding:8px;border-bottom:1px solid #333;">#</th>
+                <th style="padding:8px;border-bottom:1px solid #333;">Template ID</th>
               </tr>
             </thead>
             <tbody>
-              ${templateIds.map((id, index) => `
+              ${templateIds.map((id, i) => `
                 <tr>
-                  <td style="padding: 6px 8px; border-bottom: 1px solid #333;">${index + 1}</td>
-                  <td style="padding: 6px 8px; border-bottom: 1px solid #333;">${id}</td>
+                  <td style="padding:6px 8px;border-bottom:1px solid #333;">${i + 1}</td>
+                  <td style="padding:6px 8px;border-bottom:1px solid #333;">${id}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         `;
     
-        // Insert table right after the output section
-        const output = document.getElementById('output');
-        output.insertAdjacentElement('afterend', tableContainer);
-    
-        // ✅ Render NFT cards
+        // NFT rows
         for (const nft of data.nfts) {
           const imgHash =
             nft.img ||
@@ -212,24 +214,27 @@
     
           const imgUrl = resolveIpfsUrl(imgHash);
     
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
+          const row = document.createElement('div');
+          row.className = 'nft-row';
+          row.innerHTML = `
             <img src="${imgUrl}" alt="${nft.name || 'NFT'}"
-                 onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'; this.onerror=null;">
-            <div class="card-info">
-              <h3>${nft.name || 'Untitled NFT'}</h3>
-            </div>
-            <pre class="json">${JSON.stringify(nft, null, 2)}</pre>
+                 onerror="this.src='https://via.placeholder.com/64x64?text=No+Image'; this.onerror=null;">
+            <span>${nft.name || 'Untitled NFT'}</span>
           `;
-          gallery.appendChild(card);
+          row.onclick = () => {
+            const info = document.createElement('pre');
+            info.className = 'json';
+            info.textContent = JSON.stringify(nft, null, 2);
+            document.getElementById('leftPanel').appendChild(info);
+            info.scrollIntoView({ behavior: 'smooth' });
+          };
+          gallery.appendChild(row);
         }
       } catch (err) {
         console.error('❌ Error fetching NFTs:', err);
         document.getElementById('output').textContent = 'Failed to fetch NFTs.';
       }
     }
-
 
     document.getElementById('loginBtn').onclick = async () => {
       try {
