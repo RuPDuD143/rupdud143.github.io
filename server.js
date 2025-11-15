@@ -2,7 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
+//const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
 const { Api, JsonRpc } = require('eosjs');
 const { JsSignatureProvider } = require('eosjs/dist/eosjs-jssig');
@@ -12,12 +12,11 @@ const app = express();
 app.use(express.json());
 app.use(cors({
   origin: [
-    'http://localhost',
-    'http://127.0.0.1',
-    'http://localhost:8080'
-  ],
-  credentials: true
+    "https://rupdud143.onrender.com",
+    "http://localhost:8080"
+  ]
 }));
+
 
 // --- Setup ---
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -302,4 +301,6 @@ app.post('/convert/withdraw', async (req, res) => {
 });
 
 // --- Start server ---
-app.listen(PORT, () => console.log(`✅ Server running locally at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
