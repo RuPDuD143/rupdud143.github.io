@@ -11,13 +11,9 @@ const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: [
-    "https://rupdud143.github.io",   // Your frontend
-    "https://rupdud143.onrender.com",
-    "http://localhost:8080"
-  ],
-  methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type"]
+    origin: '*', // Allows all origins
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"]
 }));
 
 
@@ -308,4 +304,5 @@ app.post('/convert/withdraw', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
 
