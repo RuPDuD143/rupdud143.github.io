@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>KAHEL ↔ Credits Converter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+    }
+    .layout {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+    .sidebar {
+      width: 220px;
+      background: #141414;
+      padding: 25px 15px;
+      border-right: 2px solid #222;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      box-shadow: inset -1px 0 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar h3 {
+      color: #ffa500;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .sidebar button {
+      background: #222;
+      border: 1px solid #333;
+      color: #ddd;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar button:hover {
+      background: #ffa500;
+      color: #000;
+      border-color: #ffa500;
+      transform: translateX(3px);
+    }
+
+    .sidebar button:active {
+      background: #ff8c00;
+    }
+    .content {
+      flex: 1;
+      padding: 20px;
+    }
+    .resultBox {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #222;
+      color: #ddd;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .success { color: #00ff99; }
+    .error { color: #ff4444; }
+    .loading { color: #ffcc00; }
+    button {
+      background: #ff6600;
+      border: none;
+      padding: 8px 16px;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ✅ NAVBAR -->
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding:10px 20px;background:#000;border-bottom:2px solid #222;">
+    <div style="display:flex;align-items:center;gap:15px;">
+      <div style="font-weight:bold;">[LOGO]</div>
+      <div>KAHEL Converter</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:15px;">
+      <div id="creditsDisplay">Credits: 0</div>
+      <button id="loginBtn">Login</button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- ✅ SIDEBAR -->
+    <div class="sidebar">
+      <h3>Menu</h3>
+      <button onclick="location.reload()">🏦 Deposit / Withdraw</button>
+      <h3>Games</h3>
+      <button onclick="window.location.href='mines.html'">💣 Mines</button>
+      <button onclick="alert('Coming soon!')">⚙️ Settings</button>
+      <button onclick="alert('Coming soon!')">📢 Announcements</button>
+    </div>
+    
+
+    <!-- ✅ CONTENT -->
+    <div class="content">
+      <div style="display:flex;gap:40px;justify-content:center;align-items:flex-start;">
+
+        <!-- Deposit -->
+        <div style="width:45%;background:#181818;padding:20px;border-radius:10px;">
+          <h2>Deposit KAHEL → Credits</h2>
+          <input id="kahelAmount" placeholder="Enter KAHEL amount" type="number" step="0.01">
+          <button onclick="deposit()">Deposit</button>
+          <pre id="resultDeposit"></pre>
+        </div>
+
+        <!-- Withdraw -->
+        <div style="width:45%;background:#181818;padding:20px;border-radius:10px;">
+          <h2>Withdraw Credits → KAHEL</h2>
+          <input id="creditAmount" placeholder="Enter Credits to cash out" type="number" step="1">
+          <button onclick="withdraw()">Withdraw</button>
+          <pre id="resultWithdraw"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ SCRIPTS -->
+  <script src="waxjs.js"></script>
+  <script>
+    const API = 'http://localhost:8080';
+    let wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
+    let userAccount = null;
+    
+    // Restore session on page load
+    window.addEventListener('load', async () => {
+      const savedUser = sessionStorage.getItem('waxUser');
+      if (savedUser) {
+        userAccount = savedUser;
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        updateCredits();
+      }
+    });
+    
+    // --- Login + Logout ---
+    async function updateCredits() {
+      if (!userAccount) return;
+      try {
+        const res = await fetch(`${API}/credits/${userAccount}`);
+        const data = await res.json();
+        document.getElementById('creditsDisplay').innerText = `Credits: ${data.credits}`;
+      } catch (e) {
+        console.log('Credit fetch failed', e);
+      }
+    }
+    
+    async function login() {
+      try {
+        userAccount = await wax.login();
+        sessionStorage.setItem('waxUser', userAccount); // ✅ save session for current tab
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        updateCredits();
+      } catch {
+        alert('Login failed.');
+      }
+    }
+    
+    function logout() {
+      userAccount = null;
+      sessionStorage.removeItem('waxUser'); // ✅ clear session
+      document.getElementById('loginBtn').style.display = 'inline';
+      document.getElementById('logoutBtn').style.display = 'none';
+      document.getElementById('creditsDisplay').innerText = 'Credits: 0';
+    }
+    
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('logoutBtn').onclick = logout;
+    </script>
+    
+  <script> // --- Deposit Function ---
+    async function deposit() {
+      if (!userAccount) return alert('Please log in first!');
+      const amount = parseFloat(document.getElementById('kahelAmount').value);
+      if (!amount || amount <= 0) return alert('Enter valid KAHEL amount');
+      const quantity = `${amount.toFixed(2)} KAHEL`;
+      const resultBox = document.getElementById('resultDeposit');
+
+      resultBox.className = "resultBox loading";
+      resultBox.innerText = "⏳ Sending transaction...";
+
+      try {
+        const txResult = await wax.api.transact({
+          actions: [{
+            account: 'rupdud143143',
+            name: 'transfer',
+            authorization: [{ actor: userAccount, permission: 'active' }],
+            data: { from: userAccount, to: 'testacct1434', quantity, memo: 'Deposit for credits' }
+          }]
+        }, { blocksBehind: 3, expireSeconds: 30 });
+
+        const txid = txResult.transaction_id;
+        resultBox.innerText = "⏳ Transaction sent. Awaiting confirmation...";
+
+        const res = await fetch(`${API}/convert/deposit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: userAccount, kahel_amount: amount.toFixed(2), txid })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          const creditsGained = (amount * 100).toFixed(0); // RATE = 100
+          resultBox.className = "resultBox success";
+          resultBox.innerText = `✅ Deposit Success!\nConverted ${amount.toFixed(2)} KAHEL → ${creditsGained} Credits!`;
+          updateCredits();
+        } else {
+          resultBox.className = "resultBox error";
+          resultBox.innerText = `❌ Deposit Failed\nError: ${data.error || data.details || 'Unknown error'}`;
+        }
+      } catch (err) {
+        console.error(err);
+        resultBox.className = "resultBox error";
+        resultBox.innerText = `❌ Deposit Failed\nError: ${err.message}`;
+      }
+    }
+
+    // --- Withdraw Function ---
+    async function withdraw() {
+      if (!userAccount) return alert('Please log in first!');
+
+      // get input and floor it
+      let credits = parseFloat(document.getElementById('creditAmount').value);
+      if (!credits || credits < 100) return alert('Minimum withdrawal is 100 credits.');
+
+      credits = Math.floor(credits); // remove decimals
+
+      const resultBox = document.getElementById('resultWithdraw');
+      resultBox.className = "resultBox loading";
+      resultBox.innerText = "⏳ Processing withdrawal...";
+
+      try {
+        const res = await fetch(`${API}/convert/withdraw`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: userAccount, credits_to_use: credits })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          const kahelSent = (credits / 100).toFixed(2); // RATE = 100
+          resultBox.className = "resultBox success";
+          resultBox.innerText = `✅ Withdrawal Success!\nConverted ${credits} Credits → ${kahelSent} KAHEL!`;
+          updateCredits();
+        } else {
+          resultBox.className = "resultBox error";
+          resultBox.innerText = `❌ Withdrawal Failed\nError: ${data.error || data.details || 'Unknown error'}`;
+        }
+      } catch (err) {
+        console.error(err);
+        resultBox.className = "resultBox error";
+        resultBox.innerText = `❌ Withdrawal Failed\nError: ${err.message}`;
+      }
+    }
+
+  </script>
+</body>
+</html>

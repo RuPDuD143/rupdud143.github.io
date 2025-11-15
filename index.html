@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FourLeaf</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding:10px 20px;background:#000;border-bottom:2px solid #222;">
+    <div style="display:flex;align-items:center;gap:15px;">
+      <div><img class="logo" src="images/Gemini_Generated_Image_48fxnb48fxnb48fx.png"></div>
+      <div class="title-font">FourLeaf</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:15px;">
+      <div id="creditsDisplay">Credits: 0</div>
+      <button id="loginBtn">Login</button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <h3>Menu</h3>
+      <button onclick="location.reload()">🏦 Deposit / Withdraw</button>
+      <h3>Games</h3>
+      <button onclick="window.location.href='mines.html'">💣 Mines</button>
+      <button onclick="alert('Coming soon!')">⚙️ Settings</button>
+      <button onclick="alert('Coming soon!')">📢 Announcements</button>
+    </div>
+
+    <div class="content">
+      <h1>Buy/Sell Credits</h1>
+      <div style="display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap;">
+        <div style="width:320px;background:#181818;padding:20px;border-radius:10px;">
+          <h2>Deposit KAHEL → Credits</h2>
+          <input id="kahelAmount" placeholder="Enter KAHEL amount" type="number" step="0.01">
+          <button onclick="deposit()">Deposit</button>
+          <pre id="resultDeposit" class="resultBox"></pre>
+        </div>
+
+        <div style="width:320px;background:#181818;padding:20px;border-radius:10px;">
+          <h2>Withdraw Credits → KAHEL</h2>
+          <input id="creditAmount" placeholder="Enter Credits to cash out" type="number" step="1">
+          <button onclick="withdraw()">Withdraw</button>
+          <pre id="resultWithdraw" class="resultBox"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wallet selection modal -->
+  <div id="walletModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:9999;">
+    <div style="background:#222;padding:30px;border-radius:10px;text-align:center;min-width:300px;">
+      <h2 style="color:#ffa500;">Select Wallet</h2>
+      <button onclick="selectWallet('cloud')">☁️ Cloud Wallet</button>
+      <button onclick="selectWallet('anchor')">🔑 Anchor Wallet</button>
+      <button onclick="closeWalletModal()" style="margin-top:15px;background:#444;">Cancel</button>
+    </div>
+  </div>
+
+  <script src="waxjs.js"></script>
+  <script src="AnchorJS/anchor-link.bundle.js"></script>
+  <script src="AnchorJS/anchor-link-browser-transport.bundle.js"></script>
+  <script>
+    const API = 'http://localhost:8080';
+let wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
+let userAccount = null;
+let usingAnchor = false;
+let anchorSession = null;
+
+// Wallet modal
+function openWalletModal() { document.getElementById('walletModal').style.display = 'flex'; }
+function closeWalletModal() { document.getElementById('walletModal').style.display = 'none'; }
+
+// Logout
+function logout() {
+  userAccount = null;
+  usingAnchor = false;
+  anchorSession = null;
+  sessionStorage.removeItem('waxUser');
+  sessionStorage.removeItem('usingAnchor');
+  document.getElementById('loginBtn').style.display = 'inline';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('creditsDisplay').innerText = 'Credits: 0';
+}
+
+// Select wallet and login
+async function selectWallet(walletType) {
+  closeWalletModal();
+
+  try {
+    if (walletType === 'cloud') {
+      wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
+      userAccount = await wax.login();
+      usingAnchor = false;
+      anchorSession = null;
+      console.log('Logged in via Cloud Wallet:', userAccount);
+
+    } else if (walletType === 'anchor') {
+  const anchorLink = new AnchorLink({
+    transport: new AnchorLinkBrowserTransport(),
+    chains: [{
+      chainId: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4',
+      nodeUrl: 'https://wax.greymass.com',
+      name: 'WAX Mainnet'
+    }]
+  });
+
+  anchorSession = await anchorLink.login('KAHEL Converter');
+  console.log('Anchor session object:', anchorSession);
+
+  if (anchorSession?.session?.auth?.actor) {
+      userAccount = anchorSession.session.auth.actor;
+      usingAnchor = true;
+  } else if (anchorSession?.signer?.actor) {
+      userAccount = anchorSession.signer.actor;
+      usingAnchor = true;
+  } else {
+      return alert('Anchor login failed or cancelled.');
+  }
+
+  console.log('Logged in via Anchor Wallet:', userAccount);
+}
+
+    // Save session
+    sessionStorage.setItem('waxUser', userAccount);
+    sessionStorage.setItem('usingAnchor', usingAnchor ? '1' : '0');
+
+    document.getElementById('loginBtn').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'inline';
+    await updateCredits();
+
+  } catch (err) {
+    console.error('Wallet login error:', err);
+    alert('Login failed: ' + (err.message || err));
+  }
+}
+
+// Load saved session on page load
+window.addEventListener('load', async () => {
+  const savedUser = sessionStorage.getItem('waxUser');
+  const savedUsingAnchor = sessionStorage.getItem('usingAnchor') === '1';
+  if (savedUser) {
+    userAccount = savedUser;
+    usingAnchor = savedUsingAnchor;
+    document.getElementById('loginBtn').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'inline';
+    await updateCredits();
+  }
+});
+
+// Update credits display
+async function updateCredits() {
+  if (!userAccount) return;
+  try {
+    const res = await fetch(`${API}/credits/${userAccount}`);
+    const data = await res.json();
+
+    // Round to 2 decimals
+    const credits = Number(data.credits).toFixed(2);
+    const [whole, decimal] = credits.split('.');
+
+    // Display with smaller decimal
+    document.getElementById('creditsDisplay').innerHTML = 
+      `Credits: ${whole}.<span style="font-size:0.7em;">${decimal}</span>`;
+  } catch (err) {
+    console.log('Credit fetch failed:', err);
+  }
+}
+
+
+// Button bindings
+document.getElementById('loginBtn').onclick = openWalletModal;
+document.getElementById('logoutBtn').onclick = logout;
+
+async function deposit() {
+  if (!userAccount) return alert('Please log in first!');
+  
+  const amount = parseFloat(document.getElementById('kahelAmount').value);
+  if (!amount || amount <= 0) return alert('Enter valid KAHEL amount');
+  
+  const resultBox = document.getElementById('resultDeposit');
+  resultBox.className = "resultBox loading";
+  resultBox.innerText = "⏳ Sending transaction...";
+
+  try {
+    let txResult;
+
+    if (usingAnchor && anchorSession) {
+      // Anchor Wallet
+      const actor = anchorSession?.session?.auth?.actor || anchorSession?.signer?.actor;
+      if (!actor) throw new Error('Anchor session invalid');
+
+      txResult = await anchorSession.session.transact({
+        actions: [{
+          account: 'rupdud143143',
+          name: 'transfer',
+          authorization: [{ actor, permission: 'active' }],
+          data: {
+            from: actor,
+            to: 'testacct1434',
+            quantity: `${amount.toFixed(2)} KAHEL`,
+            memo: 'Deposit for credits'
+          }
+        }]
+      });
+
+      userAccount = actor; // ensure userAccount is set
+
+    } else if (!usingAnchor && wax) {
+      // Cloud Wallet
+      txResult = await wax.api.transact({
+        actions: [{
+          account: 'rupdud143143',
+          name: 'transfer',
+          authorization: [{ actor: userAccount, permission: 'active' }],
+          data: {
+            from: userAccount,
+            to: 'testacct1434',
+            quantity: `${amount.toFixed(2)} KAHEL`,
+            memo: 'Deposit for credits'
+          }
+        }]
+      }, { blocksBehind: 3, expireSeconds: 30 });
+
+    } else {
+      throw new Error('No wallet session available');
+    }
+
+    const txid = txResult.transaction_id || txResult.processed?.id;
+    resultBox.innerText = "⏳ Transaction sent. Waiting server confirmation...";
+
+    // Notify backend to credit user
+    const res = await fetch(`${API}/convert/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: userAccount, kahel_amount: amount.toFixed(2), txid })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.added_credits !== undefined) {
+      resultBox.className = "resultBox success";
+      resultBox.innerText = `✅ Deposit Success!\nAdded Credits: ${data.added_credits}\nTotal Credits: ${data.total_credits}`;
+      updateCredits();
+    } else {
+      resultBox.className = "resultBox error";
+      resultBox.innerText = `❌ Deposit Failed\n${data.error || data.details || 'Unknown error'}`;
+    }
+
+  } catch (err) {
+    console.error(err);
+    resultBox.className = "resultBox error";
+    resultBox.innerText = `❌ Deposit Failed\nError: ${err.message}`;
+  }
+}
+
+
+async function withdraw() {
+  if (!userAccount) return alert('Please log in first!');
+
+  const credits = parseInt(document.getElementById('creditAmount').value);
+  if (!credits || credits < 100) return alert('Minimum withdrawal is 100 credits.');
+
+  const resultBox = document.getElementById('resultWithdraw');
+  resultBox.className = "resultBox loading";
+  resultBox.innerText = "⏳ Processing withdrawal...";
+
+  try {
+    // Backend handles the conversion from credits → KAHEL
+    const res = await fetch(`${API}/convert/withdraw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: userAccount, credits_to_use: credits })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      resultBox.className = "resultBox success";
+      resultBox.innerText = `✅ Withdrawal Success!\nCredits spent: ${credits}\nKAHEL sent: ${data.kahel_sent}`;
+      updateCredits();
+    } else {
+      resultBox.className = "resultBox error";
+      resultBox.innerText = `❌ Withdrawal Failed\n${data.error || data.details || 'Unknown error'}`;
+    }
+
+  } catch (err) {
+    console.error(err);
+    resultBox.className = "resultBox error";
+    resultBox.innerText = `❌ Withdrawal Failed\nError: ${err.message}`;
+  }
+}
+    // Load saved session
+    window.addEventListener('load', async () => {
+      const savedUser = sessionStorage.getItem('waxUser');
+      const savedUsingAnchor = sessionStorage.getItem('usingAnchor') === '1';
+      if (savedUser) {
+        userAccount = savedUser;
+        usingAnchor = savedUsingAnchor;
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        updateCredits();
+      }
+    });
+
+    document.getElementById('loginBtn').onclick = openWalletModal;
+    document.getElementById('logoutBtn').onclick = logout;
+  </script>
+</body>
+</html>

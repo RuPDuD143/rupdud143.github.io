@@ -1,0 +1,114 @@
+<style>
+  .resultBox {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #222;
+    color: #ddd;
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
+  .success { color: #00ff99; }
+  .error { color: #ff4444; }
+  .loading { color: #ffcc00; }
+</style>
+<div style="display:flex;gap:40px;justify-content:center;align-items:flex-start;">
+
+  <!-- Deposit -->
+  <div style="width:45%;background:#181818;padding:20px;border-radius:10px;">
+    <h2>Deposit KAHEL → Credits</h2>
+    <input id="kahelAmount" placeholder="Enter KAHEL amount" type="number" step="0.01">
+    <button onclick="deposit()">Deposit</button>
+    <pre id="resultDeposit"></pre>
+  </div>
+
+  <!-- Withdraw -->
+  <div style="width:45%;background:#181818;padding:20px;border-radius:10px;">
+    <h2>Withdraw Credits → KAHEL</h2>
+    <input id="creditAmount" placeholder="Enter Credits to cash out" type="number" step="1">
+    <button onclick="withdraw()">Withdraw</button>
+    <pre id="resultWithdraw"></pre>
+  </div>
+</div>
+
+<script>
+async function deposit() {
+  if (!userAccount) return alert('Please log in first!');
+  const amount = parseFloat(document.getElementById('kahelAmount').value);
+  if (!amount || amount <= 0) return alert('Enter valid KAHEL amount');
+  const quantity = `${amount.toFixed(2)} KAHEL`;
+  const resultBox = document.getElementById('resultDeposit');
+
+  resultBox.className = "resultBox loading";
+  resultBox.innerText = "⏳ Sending transaction...";
+
+  try {
+    const txResult = await wax.api.transact({
+      actions: [{
+        account: 'rupdud143143',
+        name: 'transfer',
+        authorization: [{ actor: userAccount, permission: 'active' }],
+        data: { from: userAccount, to: 'testacct1434', quantity, memo: 'Deposit for credits' }
+      }]
+    }, { blocksBehind: 3, expireSeconds: 30 });
+
+    const txid = txResult.transaction_id;
+    resultBox.innerText = "⏳ Transaction sent. Awaiting confirmation...";
+
+    const res = await fetch(`${API}/convert/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: userAccount, kahel_amount: amount.toFixed(2), txid })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      const creditsGained = (amount * 100).toFixed(0); // Assuming RATE=100
+      resultBox.className = "resultBox success";
+      resultBox.innerText = `✅ Deposit Success!\nConverted ${amount.toFixed(2)} KAHEL → ${creditsGained} Credits!`;
+      updateCredits();
+    } else {
+      resultBox.className = "resultBox error";
+      resultBox.innerText = `❌ Deposit Failed\nError: ${data.error || data.details || 'Unknown error'}`;
+    }
+  } catch (err) {
+    console.error(err);
+    resultBox.className = "resultBox error";
+    resultBox.innerText = `❌ Deposit Failed\nError: ${err.message}`;
+  }
+}
+
+
+async function withdraw() {
+  if (!userAccount) return alert('Please log in first!');
+  const credits = parseFloat(document.getElementById('creditAmount').value);
+  if (!credits || credits <= 0) return alert('Enter valid credit amount');
+
+  const resultBox = document.getElementById('resultWithdraw');
+  resultBox.className = "resultBox loading";
+  resultBox.innerText = "⏳ Processing withdrawal...";
+
+  try {
+    const res = await fetch(`${API}/convert/withdraw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: userAccount, credits_to_use: credits })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      const kahelSent = (credits / 100).toFixed(2); // Assuming RATE=100
+      resultBox.className = "resultBox success";
+      resultBox.innerText = `✅ Withdrawal Success!\nConverted ${credits} Credits → ${kahelSent} KAHEL!`;
+      updateCredits();
+    } else {
+      resultBox.className = "resultBox error";
+      resultBox.innerText = `❌ Withdrawal Failed\nError: ${data.error || data.details || 'Unknown error'}`;
+    }
+  } catch (err) {
+    console.error(err);
+    resultBox.className = "resultBox error";
+    resultBox.innerText = `❌ Withdrawal Failed\nError: ${err.message}`;
+  }
+}
+</script>

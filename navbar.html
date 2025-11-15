@@ -1,0 +1,53 @@
+<div style="display:flex;justify-content:space-between;align-items:center;
+            padding:10px 20px;background:#000;border-bottom:2px solid #222;">
+
+  <div style="display:flex;align-items:center;gap:15px;">
+    <div style="font-weight:bold;">[LOGO]</div>
+    <div>KAHEL Converter</div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:15px;">
+    <div id="creditsDisplay">Credits: 0</div>
+    <button id="loginBtn">Login</button>
+    <button id="logoutBtn" style="display:none;">Logout</button>
+  </div>
+</div>
+
+<script src="waxjs.js"></script>
+<script>
+const API = 'http://localhost:8080';
+let wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
+let userAccount = null;
+
+async function updateCredits() {
+  if (!userAccount) return;
+  try {
+    const res = await fetch(`${API}/credits/${userAccount}`);
+    const data = await res.json();
+    document.getElementById('creditsDisplay').innerText = `Credits: ${data.credits}`;
+  } catch (e) {
+    console.log('Credit fetch failed', e);
+  }
+}
+
+async function login() {
+  try {
+    userAccount = await wax.login();
+    document.getElementById('loginBtn').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'inline';
+    updateCredits();
+  } catch {
+    alert('Login failed.');
+  }
+}
+
+function logout() {
+  userAccount = null;
+  document.getElementById('loginBtn').style.display = 'inline';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('creditsDisplay').innerText = 'Credits: 0';
+}
+
+document.getElementById('loginBtn').onclick = login;
+document.getElementById('logoutBtn').onclick = logout;
+</script>

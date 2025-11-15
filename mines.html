@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FourLeaf | Mines</title>
+  <link rel="stylesheet" href="styles.css">
+  
+</head>
+
+<body>
+  <!-- ✅ NAVBAR -->
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding:10px 20px;background:#000;border-bottom:2px solid #222;">
+    <div style="display:flex;align-items:center;gap:15px;">
+      <div><img class="logo" src="images/Gemini_Generated_Image_48fxnb48fxnb48fx.png"></div>
+      <div class="title-font">FourLeaf</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:15px;">
+      <div id="creditsDisplay">Credits: 0</div>
+      <button id="loginBtn">Login</button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- ✅ SIDEBAR -->
+    <div class="sidebar">
+      <h3>Menu</h3>
+      <button onclick="window.location.href='index.html'">🏦 Deposit / Withdraw</button>
+      <h3>Games</h3>
+      <button onclick="location.reload()">💣 Mines</button>
+      <button onclick="alert('Coming soon!')">⚙️ Settings</button>
+      <button onclick="alert('Coming soon!')">📢 Announcements</button>
+    </div>
+    
+
+    <!-- ✅ CONTENT -->
+    <div class="content">
+      <div class="mines-container">
+        <h2>💣 Mines Game</h2>
+      
+        <div class="mine-grid" id="mineGrid"></div>
+        <div class="info" id="mineInfo">Set your bet and bombs first!</div>
+      
+        <div class="overlay" id="setupOverlay">
+          <h3>Set Bet & Bombs</h3>
+          <div>
+            <label>Bet Credits:</label>
+            <input type="number" id="betInput" value="10" min="1">
+            <label>Bombs:</label>
+            <input type="number" id="bombInput" value="3" min="1" max="24">
+          </div>
+          <button id="startBtn">Start Game</button>
+          <div style="margin-top:10px;font-size:0.9em;color:#ccc;">You must have enough credits to play!</div>
+        </div>
+      
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ SCRIPTS -->
+  <script src="waxjs.js"></script>
+  <script>
+    const API = 'http://localhost:8080';
+    let wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
+    let userAccount = null;
+    
+    // Restore session on page load
+    window.addEventListener('load', async () => {
+      const savedUser = sessionStorage.getItem('waxUser');
+      if (savedUser) {
+        userAccount = savedUser;
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        updateCredits();
+      }
+    });
+    
+    // --- Login + Logout ---
+    // Update credits display
+    async function updateCredits() {
+      if (!userAccount) return;
+      try {
+        const res = await fetch(`${API}/credits/${userAccount}`);
+        const data = await res.json();
+
+        // Round to 2 decimals
+        const credits = Number(data.credits).toFixed(2);
+        const [whole, decimal] = credits.split('.');
+
+        // Display with smaller decimal
+        document.getElementById('creditsDisplay').innerHTML = 
+          `Credits: ${whole}.<span style="font-size:0.7em;">${decimal}</span>`;
+      } catch (err) {
+        console.log('Credit fetch failed:', err);
+      }
+    }
+    
+    async function login() {
+      try {
+        userAccount = await wax.login();
+        sessionStorage.setItem('waxUser', userAccount); // ✅ save session for current tab
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        updateCredits();
+      } catch {
+        alert('Login failed.');
+      }
+    }
+    
+    function logout() {
+      userAccount = null;
+      sessionStorage.removeItem('waxUser'); // ✅ clear session
+      document.getElementById('loginBtn').style.display = 'inline';
+      document.getElementById('logoutBtn').style.display = 'none';
+      document.getElementById('creditsDisplay').innerText = 'Credits: 0';
+    }
+    
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('logoutBtn').onclick = logout;
+    </script>
+    
+    <script>
+      const mineGrid = document.getElementById('mineGrid');
+      const mineInfo = document.getElementById('mineInfo');
+      const setupOverlay = document.getElementById('setupOverlay');
+      const startBtn = document.getElementById('startBtn');
+      const betInput = document.getElementById('betInput');
+      const bombInput = document.getElementById('bombInput');
+      
+      const gridSize = 25;
+      let gameId = null;
+      let revealed = new Set();
+      let gameActive = false;
+      
+      // --- setup grid ---
+      function setupGrid() {
+        mineGrid.innerHTML = '';
+        for (let i = 0; i < gridSize; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.index = i;
+          cell.addEventListener('click', () => clickCell(i));
+          mineGrid.appendChild(cell);
+        }
+        updateCredits();
+      }
+      
+      // --- start game ---
+      async function startGame() {
+        if (!userAccount) return alert('Please login first!');
+        const bet_amount = parseFloat(betInput.value);
+        const bombCount = parseInt(bombInput.value);
+      
+        if (bet_amount <= 0) return alert('Bet must be positive.');
+        if (bombCount < 1 || bombCount > 24) return alert('Bombs must be 1-24.');
+      
+        try {
+          // Call server to start a game
+          const res = await fetch(`${API}/game/start`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ wallet: userAccount, bet_amount, bombCount })
+          });
+      
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            return alert(`Failed to start game: ${errData.error || 'Unknown error'}`);
+          }
+      
+          const data = await res.json();
+          gameId = data.gameId;
+          revealed.clear();
+          gameActive = true;
+          setupOverlay.style.display = 'none';
+          mineInfo.innerText = 'Game started! Pick a safe tile.';
+          setupGrid();
+      
+        } catch (err) {
+          console.error(err);
+          alert('Failed to start game.');
+        }
+      }
+      
+      // --- click a tile ---
+      async function clickCell(i) {
+      if (!gameActive || !gameId) return alert('Game not started!');
+      if (!userAccount) return alert('Please login first!');
+
+      const cell = mineGrid.children[i];
+      if (cell.classList.contains('revealed')) return;
+
+      try {
+        const res = await fetch(`${API}/game/click`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ gameId, tileIndex: i, wallet: userAccount })
+        });
+
+        const data = await res.json();
+        if (!res.ok) return alert(data.error || 'Error clicking tile');
+
+        if (data.result === 'mine') {
+          cell.classList.add('revealed', 'mine');
+          cell.textContent = '💣';
+          mineInfo.innerText = '💥 You hit a mine! Game over.';
+          gameActive = false;
+          setupOverlay.style.display = 'flex';
+
+          // ✅ Reveal remaining mines from server response
+          data.mine_positions.forEach(idx => {
+            const mineCell = mineGrid.children[idx];
+            if (!mineCell.classList.contains('revealed')) {
+              mineCell.classList.add('revealed', 'mine');
+              mineCell.textContent = '💣';
+            }
+          });
+
+        } else {
+          cell.classList.add('revealed', 'safe');
+          cell.textContent = '💎';
+          mineInfo.innerText = `Safe! Multiplier: ×${data.multiplier}. Click another tile or Cash Out.`;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+      
+      // --- reveal all mines ---
+      async function revealAllMines() {
+        if (!gameId) return;
+        try {
+          // Just fetch the game to get mine positions
+          const res = await fetch(`${API}/game/click`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ gameId, tileIndex: -1, wallet: userAccount })
+          }).catch(() => null);
+          // Not strictly needed; front-end already shows mines when losing
+        } catch {}
+      }
+      
+      // --- cash out ---
+      async function cashOut() {
+        if (!gameActive || !gameId) return;
+        gameActive = false;
+      
+        try {
+          const res = await fetch(`${API}/game/cashout`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ gameId, wallet: userAccount }) // ✅ include wallet
+          });
+
+      
+          const data = await res.json();
+          if (!res.ok) return alert(data.error || 'Cash out failed');
+      
+          mineInfo.innerText = `🎉 Cashed out! Winnings: ${data.winnings.toFixed(2)}.`;
+          setupOverlay.style.display = 'flex';
+          updateCredits();
+          gameId = null;
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      
+      // --- init ---
+      startBtn.addEventListener('click', startGame);
+      
+      const cashBtn = document.createElement('button');
+      cashBtn.innerText = 'Cash Out';
+      cashBtn.style.marginTop = '10px';
+      cashBtn.onclick = cashOut;
+      document.querySelector('.mines-container').appendChild(cashBtn);
+      
+      setupGrid();
+      updateCredits();
+      </script>
+      
+      
+</body>
+</html>
