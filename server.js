@@ -12,10 +12,14 @@ const app = express();
 app.use(express.json());
 app.use(cors({
   origin: [
+    "https://rupdud143.github.io",   // Your frontend
     "https://rupdud143.onrender.com",
     "http://localhost:8080"
-  ]
+  ],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
 }));
+
 
 
 // --- Setup ---
@@ -304,3 +308,4 @@ app.post('/convert/withdraw', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
