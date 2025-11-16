@@ -11,10 +11,15 @@ const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 app.use(cors({
-    origin: '*', // Allows all origins
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"]
+    origin: [
+        "https://rupdud143.github.io",   // your frontend
+        "http://localhost:8080"          // local dev
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+    credentials: false
 }));
+
 
 
 
