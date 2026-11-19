@@ -1,0 +1,44 @@
+name: Build WAX ORNG test contract
+
+on:
+  push:
+    branches:
+      - orng-rngtest-build
+    paths:
+      - "orng-rngtest/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: waxteam/waxdev:v5.0.3wax02-v4.0.1-wax1.0.0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify WAX CDT
+        run: |
+          command -v cdt-cpp
+          cdt-cpp --version
+
+      - name: Compile contract and generate ABI
+        run: |
+          mkdir -p build
+          cdt-cpp -O3 -abigen -o build/rngtest.wasm orng-rngtest/src/rngtest.cpp
+          test -s build/rngtest.wasm
+          test -s build/rngtest.abi
+          ls -lh build/rngtest.wasm build/rngtest.abi
+
+      - name: Upload WASM and ABI
+        uses: actions/upload-artifact@v4
+        with:
+          name: rngtest-wasm-abi
+          path: |
+            build/rngtest.wasm
+            build/rngtest.abi
+          if-no-files-found: error
+          retention-days: 14
