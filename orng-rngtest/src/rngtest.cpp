@@ -45,7 +45,7 @@ public:
         });
 
         action(
-            permission_level{get_self(), "active"_n},
+            permission_level{get_self(), "orng"_n},
             "orng.wax"_n,
             "requestrand"_n,
             std::make_tuple(roll_id, signing_value, get_self())
